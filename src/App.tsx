@@ -1,24 +1,45 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import * as React from 'react';
+import { createReducer, createAction } from '@reduxjs/toolkit';
+import Palette from './components/Palette';
+import Artboard from './components/Artboard';
+import Toolbar from './components/Toolbar';
+import * as M from './model';
+
+// function absurd<T>(x: never): T {
+//   throw new Error(`Unexpected case: ${x}`);
+// }
+
+const changeTool = createAction<{tool: M.Tool}>('changeTool');
+
+interface State {
+  activeTool: M.Tool;
+}
+
+const initialState: State = {
+  activeTool: 'pen',
+};
+
+const reducer = createReducer(initialState, (builder) => (
+  builder
+    .addCase(changeTool, (state, action) => {
+      state.activeTool = action.payload.tool;
+    })
+));
+
 
 function App() {
+  const [state, dispatch] = React.useReducer(reducer, initialState);
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      <Toolbar 
+        activeTool={state.activeTool}
+        onSelectTool={(tool) => {
+          dispatch(changeTool({ tool }));
+        }}
+      />
+      <Palette />
+      <Artboard />
     </div>
   );
 }
