@@ -31,42 +31,8 @@ export default function Artboard({
     const minv = mat2d.invert(mat2d.create(), transform);
     const m = mat2d.toComponents(minv);
     ctx.setTransform(m.a, m.b, m.c, m.d, m.tx, m.ty);
-    ctx.fillStyle = "green";
-
-    const pixelsToFill: Record<string, readonly [ReadonlyVec2, number]> = {};
-
-    for (const commit of sprite.commits) {
-      for (const instr of commit.instructions) {
-        const flooredLocs = instr.locations.map(
-          (l) => [Math.floor(vec2.x(l)), Math.floor(vec2.y(l))] as const
-        );
-        if (instr.type === "write-pixels") {
-          flooredLocs
-            .map((l) => ({
-              key: `${l[0]},${l[1]}`,
-              value: [l, instr.content] as const,
-            }))
-            .forEach(({ key, value }) => {
-              pixelsToFill[key] = value;
-            });
-        } else if (instr.type === "clear-pixels") {
-          flooredLocs
-            .map((l) => `${l[0]},${l[1]}`)
-            .forEach((key) => {
-              delete pixelsToFill[key];
-            });
-        }
-      }
-    }
-
     const img = new ImageData(vec2.x(sprite.size), vec2.y(sprite.size));
-    Object.values(pixelsToFill).forEach(([loc, _content]) => {
-      const offset = (loc[0] + loc[1] * vec2.x(sprite.size)) * 4;
-      img.data[offset + 0] = 255;
-      img.data[offset + 1] = 0;
-      img.data[offset + 2] = 0;
-      img.data[offset + 3] = 255;
-    });
+    img.data.set(sprite.imageData, 0);
     ctx.putImageData(img, 0, 0);
   }, [sprite, transform]);
 
@@ -81,7 +47,7 @@ export default function Artboard({
         height={16}
         ref={canvasRef}
         style={{
-          imageRendering: "pixelated",
+          imageRendering: "crisp-edges",
           width: "100%",
           height: "100%",
         }}

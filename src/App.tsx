@@ -12,89 +12,115 @@ import absurd from "./utility/absurd";
 
 const artboardClientSize = vec2.fromValues(500, 500);
 
-const changeTool = createAction<{ tool: M.Tool }>("changeTool");
-const applyTool =
-  createAction<{ locations: ReadonlyVec2[]; phase: "down" | "move" | "up" }>(
-    "applyTool"
-  );
-// const undo = createAction("undo");
-// const redo = createAction("redo");
+const toMutableTuple = (v2: ReadonlyVec2): [number, number] => [
+  vec2.x(v2),
+  vec2.y(v2),
+];
 
-type Command = ReturnType<typeof changeTool> | ReturnType<typeof applyTool>;
+const applyTool = createAction(
+  "applyTool",
+  (params: {
+    tool: M.Tool;
+    locations: [number, number][];
+    phase: "down" | "move" | "up";
+  }) => ({
+    payload: {
+      ...params,
+      locations: params.locations.map((l) => vec2.floor(l, l)),
+    },
+  })
+);
+const undo = createAction("undo");
+const redo = createAction("redo");
 
-const executeCommand = createAction<Command>("executeCommand");
+type Command = ReturnType<typeof applyTool>;
+
+const executeCommand = createAction<{ command: Command }>("executeCommand");
 
 interface State {
-  history: Command[];
+  history: { hash: string; command: Command }[];
+
+  // number of indices from end of `history` for current displayed state
+  // 0 means the last element in `history` is the displayed state
+  cursor: number;
 }
 
 const initialState: State = {
   history: [],
+  cursor: 0,
 };
 
 const reducer = createReducer(initialState, (builder) =>
   builder
-    .addCase(changeTool, (state, action) => {
-      state.activeTool = action.payload.tool;
-    })
-    .addCase(applyTool, (state, action) => {
-      const locations = action.payload.locations.map(vec2.clone);
-
-      const instructions = ((tool) => {
-        switch (tool) {
-          case "pen":
-            return [
-              {
-                type: "write-pixels",
-                locations,
-                paletteRef: 1,
-              },
-            ];
-
-          case "eraser":
-            return [
-              {
-                type: "clear-pixels",
-                locations,
-              },
-            ];
-
-          default:
-            return absurd(tool);
-        }
-      })(state.activeTool);
-
-      state.activeSprite.commits.push({
+    .addCase(executeCommand, (state, action) => {
+      if (state.cursor > 0) {
+        state.history.splice(state.history.length - state.cursor, state.cursor);
+        state.cursor = 0;
+      }
+      state.history.push({
         hash: uuid(),
-        instructions,
+        command: action.payload.command,
       });
     })
+    .addCase("undo", (state) => {
+      state.cursor += 1;
+      state.cursor = Math.min(state.history.length - 1, state.cursor);
+    })
+    .addCase("redo", (state) => {
+      state.cursor -= 1;
+      state.cursor = Math.max(0, state.cursor);
+    })
+);
+
+let __instr_count = 0;
+
+const spriteReducer = createReducer(M.Sprite.create(), (builder) =>
+  builder.addCase(applyTool, (sprite, action) => {
+    switch (action.payload.tool) {
+      case "pen":
+        __instr_count++;
+        action.payload.locations.forEach((loc) =>
+          M.Sprite.setPixelRGBA(sprite, loc, [255, 0, 0, 255])
+        );
+        return;
+      case "eraser":
+        __instr_count++;
+        action.payload.locations.forEach((loc) =>
+          M.Sprite.setPixelRGBA(sprite, loc, [0, 0, 0, 0])
+        );
+        return;
+      default:
+        return absurd(action.payload.tool);
+    }
+  })
 );
 
 const selectors = {
   activeSprite(state: State): M.Sprite {
-    return state.activeSprite;
-  },
-
-  activeTool(state: State): M.Tool {
-    return state.activeTool;
+    __instr_count = 0;
+    const out = state.history
+      .slice(0, state.history.length - state.cursor)
+      .map(({ command }) => command)
+      .reduce(spriteReducer, M.Sprite.create());
+    console.log("did calc", __instr_count);
+    return out;
   },
 };
 
 function App() {
   const [state, dispatch] = React.useReducer(reducer, initialState);
 
+  const [activeTool, setActiveTool] = React.useState<M.Tool>("pen");
+
   React.useEffect(() => {
     console.log("State changed:", state);
   }, [state]);
 
   const activeSprite = selectors.activeSprite(state);
-  const activeTool = selectors.activeTool(state);
 
   /** if `v` is a client position, the following will give the artboard
    * coordinates:
-   *     vec2.transformMat2d(v, v, artboardClientTransform)
-   */
+   *     vec2.transformMat2d(v, v, artboardClientTransform) */
   const artboardClientTransform = React.useMemo(() => {
     const out = mat2d.create();
     mat2d.fromScaling(
@@ -109,24 +135,41 @@ function App() {
       <Toolbar
         className={styles.toolbar}
         activeTool={activeTool}
-        onSelectTool={(tool) => {
-          dispatch(changeTool({ tool }));
-        }}
+        onSelectTool={setActiveTool}
+        onSelectUndo={() => dispatch(undo())}
+        onSelectRedo={() => dispatch(redo())}
       />
       <ArtboardInteractionHandler
         onDown={(artboardPos) => {
           dispatch(
-            applyTool({
-              phase: "down",
-              locations: [artboardPos],
+            executeCommand({
+              command: applyTool({
+                phase: "down",
+                locations: [artboardPos].map(toMutableTuple),
+                tool: activeTool,
+              }),
             })
           );
         }}
         onMove={(artboardPos) => {
           dispatch(
-            applyTool({
-              phase: "move",
-              locations: [artboardPos],
+            executeCommand({
+              command: applyTool({
+                phase: "move",
+                locations: [artboardPos].map(toMutableTuple),
+                tool: activeTool,
+              }),
+            })
+          );
+        }}
+        onUp={(artboardPos) => {
+          dispatch(
+            executeCommand({
+              command: applyTool({
+                phase: "up",
+                locations: [artboardPos].map(toMutableTuple),
+                tool: activeTool,
+              }),
             })
           );
         }}

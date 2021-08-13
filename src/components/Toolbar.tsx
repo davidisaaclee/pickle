@@ -6,6 +6,8 @@ import styles from "./Toolbar.module.css";
 interface Props {
   activeTool: M.Tool;
   onSelectTool: (tool: M.Tool) => void;
+  onSelectUndo: () => void;
+  onSelectRedo: () => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -13,6 +15,8 @@ interface Props {
 export default function Toolbar({
   activeTool,
   onSelectTool,
+  onSelectUndo,
+  onSelectRedo,
   className,
   style,
 }: Props) {
@@ -45,6 +49,12 @@ export default function Toolbar({
           {tool}
         </label>
       ))}
+      <button className={styles.toolButton} onClick={onSelectUndo}>
+        Undo
+      </button>
+      <button className={styles.toolButton} onClick={onSelectRedo}>
+        Redo
+      </button>
     </div>
   );
 }
