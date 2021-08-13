@@ -1,0 +1,22 @@
+.container {
+  display: flex;
+  flex-flow: row;
+
+  color: white;
+  padding: 5px;
+}
+
+.toolButton {
+  width: 50px;
+  height: 50px;
+  margin: 0 4px;
+  display: flex;
+  flex-flow: column;
+  align-items: center;
+  justify-content: center;
+  background-color: darkgray;
+}
+
+.toolButton.selected {
+  background-color: black;
+}

@@ -1,7 +1,7 @@
 import * as React from "react";
 
 interface Props {
-  style?: React.StyleHTMLAttributes<"div">;
+  style?: React.CSSProperties;
 }
 
 export default function Palette({ style }: Props) {

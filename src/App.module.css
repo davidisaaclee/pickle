@@ -1,0 +1,22 @@
+.container {
+  display: flex;
+  flex-flow: column;
+  height: 100%;
+  background-color: lightgray;
+}
+
+.artboard {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  left: 50%;
+  top: 50%;
+  width: 500px;
+  height: 500px;
+  background-color: white;
+}
+
+.toolbar {
+  position: absolute;
+  bottom: 20px;
+  align-self: center;
+}
