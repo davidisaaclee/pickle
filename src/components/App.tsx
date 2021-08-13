@@ -5,7 +5,6 @@ import ArtboardInteractionHandler from "../components/ArtboardInteractionHandler
 import Toolbar from "../components/Toolbar";
 import * as M from "../model";
 import styles from "./App.module.css";
-import { useStore } from "react-redux";
 import { selectors, actions, useSelector, useDispatch } from "../redux";
 import { ReadonlyVec2, mat2d, vec2 } from "../utility/gl-matrix";
 
@@ -69,13 +68,7 @@ function App() {
           );
         }}
         onUp={(artboardPos) => {
-          dispatch(
-            actions.applyTool({
-              phase: "up",
-              locations: [artboardPos].map(toMutableTuple),
-              tool: activeTool,
-            })
-          );
+          dispatch(actions.commitChange());
         }}
         artboardClientTransform={artboardClientTransform}
       >

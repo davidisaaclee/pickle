@@ -8,7 +8,6 @@ export default configureStore({
     getDefaultMiddleware({
       serializableCheck: {
         ignoredPaths: ["sprite", "undoBuffer"],
-        ignoredActions: [actions.putImageData.type],
       },
     }),
 });

@@ -13,8 +13,7 @@ export const commitChange = createAsyncThunk<
   void,
   UntypedDispatchThunkApiConfig
 >("commitChange", (_, { dispatch, getState }) => {
-  dispatch(actions.pushSpriteHistory());
-  const activeChange = getState().activeChange;
+  const activeChange = getState().present.activeChange;
   activeChange.forEach(dispatch);
 });
 
@@ -23,15 +22,10 @@ export const applyTool = createAsyncThunk<
   {
     tool: M.Tool;
     locations: [number, number][];
-    phase: "down" | "move" | "up";
+    phase: "down" | "move";
   },
   ThunkApiConfig
 >("applyTool", (params, { dispatch }) => {
-  if (params.phase === "up") {
-    dispatch(commitChange());
-    return;
-  }
-
   switch (params.tool) {
     case "pen":
       dispatch(
@@ -59,10 +53,3 @@ export const applyTool = createAsyncThunk<
       return absurd(params.tool);
   }
 });
-
-export const undo = createAsyncThunk<void, void, UntypedDispatchThunkApiConfig>(
-  "undo",
-  (_, { dispatch, getState }) => {
-    getState().undoBuffer.forEach(dispatch);
-  }
-);

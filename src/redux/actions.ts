@@ -19,8 +19,7 @@ export const replacePixels = createAction(
   })
 );
 
-export const pushSpriteHistory = createAction("pushSpriteHistory");
-
-export const putImageData = createAction<Uint8ClampedArray>("putImageData");
-
 export const appendChange = createAction<AnyAction>("appendChange");
+
+export const undo = createAction("undo");
+export const redo = createAction("redo");

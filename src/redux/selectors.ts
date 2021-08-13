@@ -3,7 +3,7 @@ import * as actions from "./actions";
 import * as M from "../model";
 
 export const activeSprite = (state: State): M.Sprite => {
-  return state.activeChange.reduce((sprite, action) => {
+  return state.present.activeChange.reduce((sprite, action) => {
     if (actions.replacePixels.match(action)) {
       M.Sprite.setPixelsRGBA(
         sprite,
@@ -12,5 +12,5 @@ export const activeSprite = (state: State): M.Sprite => {
       );
     }
     return sprite;
-  }, M.Sprite.clone(state.sprite));
+  }, M.Sprite.clone(state.present.sprite));
 };
