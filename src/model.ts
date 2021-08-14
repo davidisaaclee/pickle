@@ -1,5 +1,5 @@
 import { v4 as uuid } from "uuid";
-import { ReadonlyVec2, vec2 } from "./utility/gl-matrix";
+import { vec2 } from "./utility/gl-matrix";
 
 export type PixelContent = [number, number, number, number];
 
@@ -17,13 +17,13 @@ export const Tool = {
   },
 };
 
-export type PixelVec2 = ReadonlyVec2;
+export type PixelVec2 = [number, number];
 export type PixelLocation = PixelVec2;
 
 export interface Sprite {
   editHash: string;
   size: PixelVec2;
-  imageData: Uint8ClampedArray;
+  imageData: number[];
 }
 
 // eslint-disable-next-line @typescript-eslint/no-redeclare
@@ -32,40 +32,40 @@ export const Sprite = {
     return {
       editHash: uuid(),
       size,
-      imageData: new Uint8ClampedArray(vec2.x(size) * vec2.y(size) * 4),
+      imageData: new Array(vec2.x(size) * vec2.y(size) * 4),
     };
   },
 
   clone(other: Sprite): Sprite {
     return {
       ...other,
-      size: vec2.clone(other.size),
-      imageData: Uint8ClampedArray.from(other.imageData),
+      size: vec2.toTuple(other.size),
+      imageData: Array.from(other.imageData).map(() => 0),
     };
   },
 
   setPixelsRGBA(
     sprite: Sprite,
-    pixelLocations: Array<PixelLocation>,
+    pixelLocations: Array<readonly [number, number]>,
     rgba: [number, number, number, number]
   ): void {
     for (const pixelLocation of pixelLocations) {
       if (
         vec2.x(pixelLocation) < 0 ||
-        vec2.x(pixelLocation) >= vec2.x(sprite.size)
+        vec2.x(pixelLocation) > vec2.x(sprite.size)
       ) {
         return;
       }
       if (
         vec2.y(pixelLocation) < 0 ||
-        vec2.y(pixelLocation) >= vec2.y(sprite.size)
+        vec2.y(pixelLocation) > vec2.y(sprite.size)
       ) {
         return;
       }
       const offset =
         (vec2.x(pixelLocation) + vec2.x(sprite.size) * vec2.y(pixelLocation)) *
         4;
-      sprite.imageData.set(rgba, offset);
+      sprite.imageData.splice(offset, 4, ...rgba);
     }
   },
 

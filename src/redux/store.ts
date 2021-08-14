@@ -10,4 +10,5 @@ export default configureStore({
         ignoredPaths: ["sprite", "undoBuffer"],
       },
     }),
+  devTools: false,
 });

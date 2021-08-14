@@ -13,8 +13,9 @@ export const commitChange = createAsyncThunk<
   void,
   UntypedDispatchThunkApiConfig
 >("commitChange", (_, { dispatch, getState }) => {
-  const activeChange = getState().present.activeChange;
-  activeChange.forEach(dispatch);
+  // TODO
+  // const activeChange = getState().present.activeChange;
+  // activeChange.forEach(dispatch);
 });
 
 export const applyTool = createAsyncThunk<
@@ -29,23 +30,19 @@ export const applyTool = createAsyncThunk<
   switch (params.tool) {
     case "pen":
       dispatch(
-        actions.appendChange(
-          actions.replacePixels({
-            locations: params.locations,
-            content: [255, 0, 0, 255],
-          })
-        )
+        actions.appendChange({
+          locations: params.locations,
+          content: [255, 0, 0, 255],
+        })
       );
       return;
 
     case "eraser":
       dispatch(
-        actions.appendChange(
-          actions.replacePixels({
-            locations: params.locations,
-            content: [0, 0, 0, 0],
-          })
-        )
+        actions.appendChange({
+          locations: params.locations,
+          content: [0, 0, 0, 0],
+        })
       );
       return;
 

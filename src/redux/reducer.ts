@@ -16,11 +16,9 @@ const reducer = createReducer(initialState, (builder) =>
       state.activeChange.push(action.payload);
     })
     .addCase(actions.replacePixels, (state, action) => {
-      M.Sprite.setPixelsRGBA(
-        state.sprite,
-        action.payload.locations,
-        action.payload.content
-      );
+      for (const change of action.payload) {
+        M.Sprite.setPixelsRGBA(state.sprite, change.locations, change.content);
+      }
       M.Sprite.updateEditHash(state.sprite);
     })
     .addCase(thunkActions.commitChange.fulfilled, (state) => {
@@ -31,4 +29,5 @@ const reducer = createReducer(initialState, (builder) =>
 export default undoable(reducer, {
   undoType: actions.undo.type,
   redoType: actions.redo.type,
+  filter: (action) => !actions.replacePixels.match(action),
 });

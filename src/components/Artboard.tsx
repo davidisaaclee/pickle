@@ -1,7 +1,7 @@
 import * as React from "react";
 import * as M from "../model";
 import { PointerHandlers } from "../utility/PointerHandlers";
-import { ReadonlyMat2d, ReadonlyVec2, mat2d, vec2 } from "../utility/gl-matrix";
+import { ReadonlyMat2d, mat2d, vec2 } from "../utility/gl-matrix";
 
 interface Props extends PointerHandlers {
   sprite: M.Sprite;
