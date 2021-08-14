@@ -2,6 +2,7 @@ import * as React from "react";
 import * as M from "../model";
 import { PointerHandlers } from "../utility/PointerHandlers";
 import { ReadonlyMat2d, mat2d, vec2 } from "../utility/gl-matrix";
+import styles from "./Artboard.module.css";
 
 interface Props extends PointerHandlers {
   sprite: M.Sprite;
@@ -27,13 +28,16 @@ export default function Artboard({
     if (ctx == null) {
       return;
     }
-    ctx.clearRect(0, 0, vec2.x(sprite.size), vec2.y(sprite.size));
+    ctx.clearRect(
+      0,
+      0,
+      vec2.x(M.Sprite.getSize(sprite)),
+      vec2.y(M.Sprite.getSize(sprite))
+    );
     const minv = mat2d.invert(mat2d.create(), transform);
     const m = mat2d.toComponents(minv);
     ctx.setTransform(m.a, m.b, m.c, m.d, m.tx, m.ty);
-    const img = new ImageData(vec2.x(sprite.size), vec2.y(sprite.size));
-    img.data.set(sprite.imageData, 0);
-    ctx.putImageData(img, 0, 0);
+    ctx.putImageData(M.Sprite.getImageData(sprite), 0, 0);
   }, [sprite, transform]);
 
   return (
@@ -46,11 +50,7 @@ export default function Artboard({
         width={16}
         height={16}
         ref={canvasRef}
-        style={{
-          imageRendering: "crisp-edges",
-          width: "100%",
-          height: "100%",
-        }}
+        className={styles.canvas}
       />
     </div>
   );

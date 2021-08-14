@@ -5,7 +5,6 @@ import ArtboardInteractionHandler from "../components/ArtboardInteractionHandler
 import Toolbar from "../components/Toolbar";
 import * as M from "../model";
 import styles from "./App.module.css";
-import { selectors, actions, useSelector, useDispatch } from "../redux";
 import { ReadonlyVec2, mat2d, vec2 } from "../utility/gl-matrix";
 
 const artboardClientSize = vec2.fromValues(500, 500);
@@ -16,16 +15,43 @@ const toMutableTuple = (v2: ReadonlyVec2): [number, number] => [
 ];
 
 function App() {
-  // const store = useStore();
-  // React.useEffect(() => {
-  //   store.subscribe(() => {
-  //     console.log(store.getState().activeChange);
-  //   });
-  // }, [store]);
-
-  const dispatch = useDispatch();
-  const activeSprite = useSelector(selectors.activeSprite);
+  const [spriteHistory, setSpriteHistory] = React.useState<{
+    frames: Array<M.Sprite>;
+    cursor: number;
+  }>(() => ({ frames: [M.Sprite.create()], cursor: 0 }));
   const [activeTool, setActiveTool] = React.useState<M.Tool>("pen");
+
+  const pushHistory = React.useCallback(() => {
+    setSpriteHistory((prev) => {
+      const frames = [...prev.frames];
+      if (prev.cursor < frames.length - 1) {
+        frames.splice(prev.cursor + 1, frames.length - prev.cursor);
+      }
+      frames.push(M.Sprite.deepClone(frames[frames.length - 1]));
+      return { frames, cursor: prev.cursor + 1 };
+    });
+  }, [setSpriteHistory]);
+
+  const activeSprite = React.useMemo(
+    () => spriteHistory.frames[spriteHistory.cursor],
+    [spriteHistory]
+  );
+
+  const setActiveSprite = React.useCallback(
+    (updater: (prev: M.Sprite) => M.Sprite) => {
+      setSpriteHistory((prev) => ({
+        ...prev,
+        frames: [
+          ...prev.frames.slice(0, prev.cursor),
+          updater(prev.frames[prev.cursor]),
+          ...prev.frames.slice(prev.cursor + 1, prev.frames.length - 1),
+        ],
+      }));
+    },
+    [setSpriteHistory]
+  );
+
+  const spriteSize = M.Sprite.getSize(activeSprite);
 
   /** if `v` is a client position, the following will give the artboard
    * coordinates:
@@ -34,41 +60,38 @@ function App() {
     const out = mat2d.create();
     mat2d.fromScaling(
       out,
-      vec2.div(vec2.create(), activeSprite.size, artboardClientSize)
+      vec2.div(vec2.create(), spriteSize, artboardClientSize)
     );
     return out;
-  }, [activeSprite.size]);
+  }, [spriteSize]);
 
   return (
     <div className={classNames(styles.container)}>
-      <Toolbar
-        className={styles.toolbar}
-        activeTool={activeTool}
-        onSelectTool={setActiveTool}
-        onSelectUndo={() => dispatch(actions.undo())}
-        onSelectRedo={() => {} /*dispatch(actions.redo()) */}
-      />
       <ArtboardInteractionHandler
         onDown={(artboardPos) => {
-          dispatch(
-            actions.applyTool({
-              phase: "down",
-              locations: [artboardPos].map(toMutableTuple),
-              tool: activeTool,
-            })
-          );
+          pushHistory();
+          setActiveSprite((prev) => {
+            const out = M.Sprite.shallowClone(prev);
+            M.Sprite.setPixelsRGBA(
+              out,
+              [vec2.toTuple(vec2.floor(vec2.create(), artboardPos))],
+              activeTool === "pen" ? [255, 0, 0, 255] : [0, 0, 0, 0]
+            );
+            M.Sprite.updateEditHash(out);
+            return out;
+          });
         }}
         onMove={(artboardPos) => {
-          dispatch(
-            actions.applyTool({
-              phase: "move",
-              locations: [artboardPos].map(toMutableTuple),
-              tool: activeTool,
-            })
-          );
-        }}
-        onUp={(artboardPos) => {
-          dispatch(actions.commitChange());
+          setActiveSprite((prev) => {
+            const out = M.Sprite.shallowClone(prev);
+            M.Sprite.setPixelsRGBA(
+              out,
+              [vec2.toTuple(vec2.floor(vec2.create(), artboardPos))],
+              activeTool === "pen" ? [255, 0, 0, 255] : [0, 0, 0, 0]
+            );
+            M.Sprite.updateEditHash(out);
+            return out;
+          });
         }}
         artboardClientTransform={artboardClientTransform}
       >
@@ -82,6 +105,23 @@ function App() {
           />
         )}
       </ArtboardInteractionHandler>
+      <Toolbar
+        className={styles.toolbar}
+        activeTool={activeTool}
+        onSelectTool={setActiveTool}
+        onSelectUndo={() => {
+          setSpriteHistory((prev) => ({
+            ...prev,
+            cursor: Math.max(0, prev.cursor - 1),
+          }));
+        }}
+        onSelectRedo={() => {
+          setSpriteHistory((prev) => ({
+            ...prev,
+            cursor: Math.min(prev.frames.length - 1, prev.cursor + 1),
+          }));
+        }}
+      />
     </div>
   );
 }
