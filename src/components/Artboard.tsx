@@ -7,20 +7,28 @@ import styles from "./Artboard.module.css";
 interface Props extends PointerHandlers {
   sprite: M.Sprite;
   transform: ReadonlyMat2d;
+  onLayout?: (boundingClientRect: DOMRect) => void;
   className?: string;
   style?: React.CSSProperties;
 }
 
-export default function Artboard({
-  sprite,
-  transform,
-  className,
-  style,
+interface Ref {
+  getDataURI(): string | null;
+}
 
-  onPointerDown,
-  onPointerUp,
-  onPointerMove,
-}: Props) {
+export default React.forwardRef<Ref, Props>(function Artboard(
+  {
+    sprite,
+    transform,
+    className,
+    style,
+
+    onPointerDown,
+    onPointerUp,
+    onPointerMove,
+  },
+  forwardedRef
+) {
   const canvasRef = React.useRef<HTMLCanvasElement>(null);
 
   React.useEffect(() => {
@@ -40,6 +48,12 @@ export default function Artboard({
     ctx.putImageData(M.Sprite.getImageData(sprite), 0, 0);
   }, [sprite, transform]);
 
+  React.useImperativeHandle(forwardedRef, () => ({
+    getDataURI() {
+      return canvasRef.current?.toDataURL() ?? null;
+    },
+  }));
+
   return (
     <div
       className={className}
@@ -47,11 +61,11 @@ export default function Artboard({
       {...{ onPointerDown, onPointerMove, onPointerUp }}
     >
       <canvas
-        width={16}
-        height={16}
+        width={vec2.x(M.Sprite.getSize(sprite))}
+        height={vec2.y(M.Sprite.getSize(sprite))}
         ref={canvasRef}
         className={styles.canvas}
       />
     </div>
   );
-}
+});

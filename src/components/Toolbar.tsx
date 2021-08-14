@@ -8,6 +8,7 @@ interface Props {
   onSelectTool: (tool: M.Tool) => void;
   onSelectUndo: () => void;
   onSelectRedo: () => void;
+  onSelectExport: () => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -17,6 +18,7 @@ export default function Toolbar({
   onSelectTool,
   onSelectUndo,
   onSelectRedo,
+  onSelectExport,
   className,
   style,
 }: Props) {
@@ -54,6 +56,9 @@ export default function Toolbar({
       </button>
       <button className={styles.toolButton} onClick={onSelectRedo}>
         Redo
+      </button>
+      <button className={styles.toolButton} onClick={onSelectExport}>
+        Export
       </button>
     </div>
   );

@@ -5,16 +5,19 @@ import ArtboardInteractionHandler from "../components/ArtboardInteractionHandler
 import Toolbar from "../components/Toolbar";
 import * as M from "../model";
 import styles from "./App.module.css";
-import { ReadonlyVec2, mat2d, vec2 } from "../utility/gl-matrix";
-
-const artboardClientSize = vec2.fromValues(500, 500);
-
-const toMutableTuple = (v2: ReadonlyVec2): [number, number] => [
-  vec2.x(v2),
-  vec2.y(v2),
-];
+import { mat2d, vec2 } from "../utility/gl-matrix";
+import { useValueFromInnerWindowSize } from "../utility/useWindowResize";
 
 function App() {
+  const artboardRef = React.useRef<React.ElementRef<typeof Artboard>>(null);
+
+  const artboardClientSize = useValueFromInnerWindowSize<[number, number]>(
+    ([width, height]) => {
+      const minorLength = Math.min(width, height);
+      return [minorLength * 0.5, minorLength * 0.5];
+    }
+  );
+
   const [spriteHistory, setSpriteHistory] = React.useState<{
     frames: Array<M.Sprite>;
     cursor: number;
@@ -82,6 +85,18 @@ function App() {
           });
         }}
         onMove={(artboardPos) => {
+          if (
+            vec2.x(artboardPos) < 0 ||
+            vec2.x(artboardPos) >= vec2.x(spriteSize)
+          ) {
+            return;
+          }
+          if (
+            vec2.y(artboardPos) < 0 ||
+            vec2.y(artboardPos) >= vec2.y(spriteSize)
+          ) {
+            return;
+          }
           setActiveSprite((prev) => {
             const out = M.Sprite.shallowClone(prev);
             M.Sprite.setPixelsRGBA(
@@ -97,9 +112,13 @@ function App() {
       >
         {(handlers) => (
           <Artboard
+            ref={artboardRef}
             {...handlers}
             className={classNames(styles.artboard)}
-            style={{}}
+            style={{
+              width: artboardClientSize[0],
+              height: artboardClientSize[1],
+            }}
             sprite={activeSprite}
             transform={artboardClientTransform}
           />
@@ -121,9 +140,25 @@ function App() {
             cursor: Math.min(prev.frames.length - 1, prev.cursor + 1),
           }));
         }}
+        onSelectExport={() => {
+          const dataUri = artboardRef.current?.getDataURI();
+          if (dataUri == null) {
+            return;
+          }
+          downloadURI(dataUri, "da-update");
+        }}
       />
     </div>
   );
+}
+
+function downloadURI(uri: string, name: string) {
+  const link = document.createElement("a");
+  link.download = name;
+  link.href = uri;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 export default App;
