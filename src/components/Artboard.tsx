@@ -7,9 +7,12 @@ import styles from "./Artboard.module.css";
 interface Props extends PointerHandlers {
   sprite: M.Sprite;
   transform: ReadonlyMat2d;
+  offset?: M.PixelVec2;
+  contentDimensions?: M.PixelVec2;
   onLayout?: (boundingClientRect: DOMRect) => void;
   className?: string;
   style?: React.CSSProperties;
+  children?: JSX.Element;
 }
 
 interface Ref {
@@ -20,12 +23,15 @@ export default React.forwardRef<Ref, Props>(function Artboard(
   {
     sprite,
     transform,
+    offset = [0, 0],
+    contentDimensions = [16, 16],
     className,
     style,
 
     onPointerDown,
     onPointerUp,
     onPointerMove,
+    children,
   },
   forwardedRef
 ) {
@@ -45,8 +51,12 @@ export default React.forwardRef<Ref, Props>(function Artboard(
     const minv = mat2d.invert(mat2d.create(), transform);
     const m = mat2d.toComponents(minv);
     ctx.setTransform(m.a, m.b, m.c, m.d, m.tx, m.ty);
-    ctx.putImageData(M.Sprite.getImageData(sprite), 0, 0);
-  }, [sprite, transform]);
+    ctx.putImageData(
+      M.Sprite.makeImageDataForSlice(sprite, offset, contentDimensions),
+      0,
+      0
+    );
+  }, [sprite, transform, offset, contentDimensions]);
 
   React.useImperativeHandle(forwardedRef, () => ({
     getDataURI() {
@@ -61,11 +71,12 @@ export default React.forwardRef<Ref, Props>(function Artboard(
       {...{ onPointerDown, onPointerMove, onPointerUp }}
     >
       <canvas
-        width={vec2.x(M.Sprite.getSize(sprite))}
-        height={vec2.y(M.Sprite.getSize(sprite))}
+        width={vec2.x(contentDimensions)}
+        height={vec2.y(contentDimensions)}
         ref={canvasRef}
         className={styles.canvas}
       />
+      {children}
     </div>
   );
 });

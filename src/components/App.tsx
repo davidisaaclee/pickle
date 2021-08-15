@@ -1,17 +1,9 @@
 import * as React from "react";
-import classNames from "classnames";
-import Artboard from "../components/Artboard";
-import ArtboardInteractionHandler from "../components/ArtboardInteractionHandler";
-import Toolbar from "../components/Toolbar";
-import Palette from "../components/Palette";
 import * as M from "../model";
-import styles from "./App.module.css";
-import { mat2d, vec2 } from "../utility/gl-matrix";
-import { useValueFromInnerWindowSize } from "../utility/useWindowResize";
+import { vec2 } from "../utility/gl-matrix";
+import Editor from "./Editor";
 
-function App() {
-  // Start: App state
-
+export default function App() {
   const [spriteHistory, setSpriteHistory] = React.useState<{
     frames: Array<M.Sprite>;
     cursor: number;
@@ -22,17 +14,6 @@ function App() {
   const [activeColor, setActiveColor] = React.useState<M.PixelContent>([
     255, 0, 0, 255,
   ]);
-
-  // End: App state
-
-  const artboardRef = React.useRef<React.ElementRef<typeof Artboard>>(null);
-
-  const artboardClientSize = useValueFromInnerWindowSize<[number, number]>(
-    ([width, height]) => {
-      const minorLength = Math.min(width, height);
-      return [minorLength * 0.5, minorLength * 0.5];
-    }
-  );
 
   const pushHistory = React.useCallback(() => {
     setSpriteHistory((prev) => {
@@ -66,18 +47,6 @@ function App() {
 
   const spriteSize = M.Sprite.getSize(activeSprite);
 
-  /** if `v` is a client position, the following will give the artboard
-   * coordinates:
-   *     vec2.transformMat2d(v, v, artboardClientTransform) */
-  const artboardClientTransform = React.useMemo(() => {
-    const out = mat2d.create();
-    mat2d.fromScaling(
-      out,
-      vec2.div(vec2.create(), spriteSize, artboardClientSize)
-    );
-    return out;
-  }, [spriteSize, artboardClientSize]);
-
   const paintPixels = React.useCallback(
     (artboardPos: readonly [number, number]) => {
       if (
@@ -106,66 +75,40 @@ function App() {
     [activeColor, spriteSize, setActiveSprite, activeTool]
   );
 
+  const beginPaint = React.useCallback(
+    (artboardPos: readonly [number, number]) => {
+      pushHistory();
+      paintPixels(vec2.toTuple(artboardPos));
+    },
+    [paintPixels, pushHistory]
+  );
+
+  const undo = React.useCallback(() => {
+    setSpriteHistory((prev) => ({
+      ...prev,
+      cursor: Math.max(0, prev.cursor - 1),
+    }));
+  }, []);
+
+  const redo = React.useCallback(() => {
+    setSpriteHistory((prev) => ({
+      ...prev,
+      cursor: Math.min(prev.frames.length - 1, prev.cursor + 1),
+    }));
+  }, []);
+
   return (
-    <div className={classNames(styles.container)}>
-      <ArtboardInteractionHandler
-        onDown={(artboardPos) => {
-          pushHistory();
-          paintPixels(vec2.toTuple(artboardPos));
-        }}
-        onMove={(artboardPos) => paintPixels(vec2.toTuple(artboardPos))}
-        artboardClientTransform={artboardClientTransform}
-      >
-        {(handlers) => (
-          <Artboard
-            ref={artboardRef}
-            {...handlers}
-            className={classNames(styles.artboard)}
-            style={{
-              width: artboardClientSize[0],
-              height: artboardClientSize[1],
-            }}
-            sprite={activeSprite}
-            transform={artboardClientTransform}
-          />
-        )}
-      </ArtboardInteractionHandler>
-      <Toolbar
-        className={styles.toolbar}
-        activeTool={activeTool}
-        onSelectTool={setActiveTool}
-        onSelectUndo={() => {
-          setSpriteHistory((prev) => ({
-            ...prev,
-            cursor: Math.max(0, prev.cursor - 1),
-          }));
-        }}
-        onSelectRedo={() => {
-          setSpriteHistory((prev) => ({
-            ...prev,
-            cursor: Math.min(prev.frames.length - 1, prev.cursor + 1),
-          }));
-        }}
-        onSelectExport={() => {
-          const dataUri = artboardRef.current?.getDataURI();
-          if (dataUri == null) {
-            return;
-          }
-          downloadURI(dataUri, "da-update");
-        }}
-      />
-      <Palette className={styles.palette} onSelectColor={setActiveColor} />
-    </div>
+    <Editor
+      {...{
+        setActiveTool,
+        activeTool,
+        setActiveColor,
+        activeSprite,
+        beginPaint,
+        paintPixels,
+        undo,
+        redo,
+      }}
+    />
   );
 }
-
-function downloadURI(uri: string, name: string) {
-  const link = document.createElement("a");
-  link.download = name;
-  link.href = uri;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-}
-
-export default App;

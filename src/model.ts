@@ -1,3 +1,4 @@
+import { inRange, range } from "lodash";
 import { v4 as uuid } from "uuid";
 import { vec2 } from "./utility/gl-matrix";
 
@@ -56,6 +57,53 @@ export const Sprite = {
 
   getImageData(spr: Sprite): ImageData {
     return spr.imageData;
+  },
+
+  makeImageDataForSlice(
+    spr: Sprite,
+    [offsetX, offsetY]: PixelVec2,
+    [targetWidth, targetHeight]: PixelVec2,
+    out?: ImageData
+  ): ImageData {
+    if (out != null) {
+      if (out.height !== targetHeight || out.width !== targetWidth) {
+        throw new Error("Size mismatch");
+      }
+    }
+
+    const [sourceWidth, sourceHeight] = Sprite.getSize(spr);
+
+    if (!inRange(offsetX, 0, sourceWidth + 1)) {
+      throw new Error("Requested out-of-range slice");
+    }
+
+    if (!inRange(offsetX + targetWidth, 0, sourceWidth + 1)) {
+      throw new Error("Requested out-of-range slice");
+    }
+
+    if (!inRange(offsetY, 0, sourceHeight + 1)) {
+      throw new Error("Requested out-of-range slice");
+    }
+    if (!inRange(offsetY + targetHeight, 0, sourceHeight + 1)) {
+      throw new Error("Requested out-of-range slice");
+    }
+
+    const result = out ?? new ImageData(targetWidth, targetHeight);
+
+    for (const targetRow of range(targetHeight)) {
+      const sourceOffset = ((offsetY + targetRow) * sourceWidth + offsetX) * 4;
+      const targetOffset = targetRow * targetWidth * 4;
+
+      result.data.set(
+        spr.imageData.data.subarray(
+          sourceOffset,
+          (sourceOffset + targetWidth * 4) % spr.imageData.data.length
+        ),
+        targetOffset
+      );
+    }
+
+    return result;
   },
 
   setPixelsRGBA(

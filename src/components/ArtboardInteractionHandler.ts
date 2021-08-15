@@ -1,18 +1,21 @@
 import * as React from "react";
 import { PointerHandlers } from "../utility/PointerHandlers";
-import { ReadonlyMat2d, ReadonlyVec2, Vec2, vec2 } from "../utility/gl-matrix";
+import { ReadonlyMat2d, Vec2, vec2 } from "../utility/gl-matrix";
+import * as M from "../model";
 
 interface Props {
   artboardClientTransform: ReadonlyMat2d;
-  onDown?: (artboardPos: ReadonlyVec2) => void;
-  onUp?: (artboardPos: ReadonlyVec2) => void;
-  onMove?: (artboardPos: ReadonlyVec2) => void;
+  onDown?: (artboardPos: M.PixelLocation) => void;
+  onUp?: (artboardPos: M.PixelLocation) => void;
+  onDrag?: (artboardPos: M.PixelLocation) => void;
+  onMove?: (artboardPos: M.PixelLocation) => void;
   children: (handlers: PointerHandlers) => JSX.Element;
 }
 
 export default function ArtboardInteractionHandler({
   onDown = () => {},
   onUp = () => {},
+  onDrag = () => {},
   onMove = () => {},
   artboardClientTransform,
   children,
@@ -36,25 +39,28 @@ export default function ArtboardInteractionHandler({
 
         const clientLoc = vec2.fromClientPosition(event);
         convertClientPositionToArtboard(clientLoc);
-        onDown(clientLoc);
+        onDown(vec2.toTuple(clientLoc));
       },
       onPointerUp(event) {
         event.currentTarget.releasePointerCapture(event.pointerId);
 
         const clientLoc = vec2.fromClientPosition(event);
         convertClientPositionToArtboard(clientLoc);
-        onUp(clientLoc);
+        onUp(vec2.toTuple(clientLoc));
       },
       onPointerMove(event) {
+        const clientLoc = vec2.fromClientPosition(event);
+        convertClientPositionToArtboard(clientLoc);
+        const pt = vec2.toTuple(clientLoc);
+        onMove(pt);
+
         if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
           return;
         }
-        const clientLoc = vec2.fromClientPosition(event);
-        convertClientPositionToArtboard(clientLoc);
-        onMove(clientLoc);
+        onDrag(pt);
       },
     }),
-    [convertClientPositionToArtboard, onMove, onDown, onUp]
+    [convertClientPositionToArtboard, onMove, onDrag, onDown, onUp]
   );
   return children(handlers);
 }
