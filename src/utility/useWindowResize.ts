@@ -18,7 +18,7 @@ export function useValueFromInnerWindowSize<T>(
   );
   const onResize = React.useCallback(() => {
     setValue(calculateValue([window.innerWidth, window.innerHeight]));
-  }, [setValue]);
+  }, [setValue, calculateValue]);
   useWindowResize(onResize);
   return value;
 }

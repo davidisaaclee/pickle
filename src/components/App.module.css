@@ -18,3 +18,7 @@
   bottom: 20px;
   align-self: center;
 }
+
+.palette {
+  position: absolute;
+}

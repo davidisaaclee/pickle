@@ -3,12 +3,28 @@ import classNames from "classnames";
 import Artboard from "../components/Artboard";
 import ArtboardInteractionHandler from "../components/ArtboardInteractionHandler";
 import Toolbar from "../components/Toolbar";
+import Palette from "../components/Palette";
 import * as M from "../model";
 import styles from "./App.module.css";
 import { mat2d, vec2 } from "../utility/gl-matrix";
 import { useValueFromInnerWindowSize } from "../utility/useWindowResize";
 
 function App() {
+  // Start: App state
+
+  const [spriteHistory, setSpriteHistory] = React.useState<{
+    frames: Array<M.Sprite>;
+    cursor: number;
+  }>(() => ({ frames: [M.Sprite.create()], cursor: 0 }));
+
+  const [activeTool, setActiveTool] = React.useState<M.Tool>("pen");
+
+  const [activeColor, setActiveColor] = React.useState<M.PixelContent>([
+    255, 0, 0, 255,
+  ]);
+
+  // End: App state
+
   const artboardRef = React.useRef<React.ElementRef<typeof Artboard>>(null);
 
   const artboardClientSize = useValueFromInnerWindowSize<[number, number]>(
@@ -17,12 +33,6 @@ function App() {
       return [minorLength * 0.5, minorLength * 0.5];
     }
   );
-
-  const [spriteHistory, setSpriteHistory] = React.useState<{
-    frames: Array<M.Sprite>;
-    cursor: number;
-  }>(() => ({ frames: [M.Sprite.create()], cursor: 0 }));
-  const [activeTool, setActiveTool] = React.useState<M.Tool>("pen");
 
   const pushHistory = React.useCallback(() => {
     setSpriteHistory((prev) => {
@@ -66,48 +76,44 @@ function App() {
       vec2.div(vec2.create(), spriteSize, artboardClientSize)
     );
     return out;
-  }, [spriteSize]);
+  }, [spriteSize, artboardClientSize]);
+
+  const paintPixels = React.useCallback(
+    (artboardPos: readonly [number, number]) => {
+      if (
+        vec2.x(artboardPos) < 0 ||
+        vec2.x(artboardPos) >= vec2.x(spriteSize)
+      ) {
+        return;
+      }
+      if (
+        vec2.y(artboardPos) < 0 ||
+        vec2.y(artboardPos) >= vec2.y(spriteSize)
+      ) {
+        return;
+      }
+      setActiveSprite((prev) => {
+        const out = M.Sprite.shallowClone(prev);
+        M.Sprite.setPixelsRGBA(
+          out,
+          [vec2.toTuple(vec2.floor(vec2.create(), artboardPos))],
+          activeTool === "pen" ? activeColor : [0, 0, 0, 0]
+        );
+        M.Sprite.updateEditHash(out);
+        return out;
+      });
+    },
+    [activeColor, spriteSize, setActiveSprite, activeTool]
+  );
 
   return (
     <div className={classNames(styles.container)}>
       <ArtboardInteractionHandler
         onDown={(artboardPos) => {
           pushHistory();
-          setActiveSprite((prev) => {
-            const out = M.Sprite.shallowClone(prev);
-            M.Sprite.setPixelsRGBA(
-              out,
-              [vec2.toTuple(vec2.floor(vec2.create(), artboardPos))],
-              activeTool === "pen" ? [255, 0, 0, 255] : [0, 0, 0, 0]
-            );
-            M.Sprite.updateEditHash(out);
-            return out;
-          });
+          paintPixels(vec2.toTuple(artboardPos));
         }}
-        onMove={(artboardPos) => {
-          if (
-            vec2.x(artboardPos) < 0 ||
-            vec2.x(artboardPos) >= vec2.x(spriteSize)
-          ) {
-            return;
-          }
-          if (
-            vec2.y(artboardPos) < 0 ||
-            vec2.y(artboardPos) >= vec2.y(spriteSize)
-          ) {
-            return;
-          }
-          setActiveSprite((prev) => {
-            const out = M.Sprite.shallowClone(prev);
-            M.Sprite.setPixelsRGBA(
-              out,
-              [vec2.toTuple(vec2.floor(vec2.create(), artboardPos))],
-              activeTool === "pen" ? [255, 0, 0, 255] : [0, 0, 0, 0]
-            );
-            M.Sprite.updateEditHash(out);
-            return out;
-          });
-        }}
+        onMove={(artboardPos) => paintPixels(vec2.toTuple(artboardPos))}
         artboardClientTransform={artboardClientTransform}
       >
         {(handlers) => (
@@ -148,6 +154,7 @@ function App() {
           downloadURI(dataUri, "da-update");
         }}
       />
+      <Palette className={styles.palette} onSelectColor={setActiveColor} />
     </div>
   );
 }
