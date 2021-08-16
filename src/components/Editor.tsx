@@ -1,14 +1,19 @@
 import { noop } from "lodash";
 import * as React from "react";
 import classNames from "classnames";
-import { useCustomCompareMemo } from "use-custom-compare";
+import {
+  useCustomCompareMemo,
+  useCustomCompareEffect,
+} from "use-custom-compare";
+import { useDrag } from "@use-gesture/react";
+import ReactHammer from "react-hammerjs";
+import * as Hammer from "hammerjs";
 import Artboard from "../components/Artboard";
 import Toolbar from "../components/Toolbar";
 import Palette from "../components/Palette";
 import * as M from "../model";
 import styles from "./Editor.module.css";
-import { Vec2, mat2d, vec2 } from "../utility/gl-matrix";
-import { PointerHandlers } from "../utility/PointerHandlers";
+import { ReadonlyVec2, Vec2, mat2d, vec2 } from "../utility/gl-matrix";
 import { useValueFromInnerWindowSize } from "../utility/useWindowResize";
 import arrayEquals from "../utility/arrayEquals";
 import absurd from "../utility/absurd";
@@ -96,20 +101,30 @@ export default function Editor({
 
   const moveCursor = React.useCallback(
     (_pos, delta: M.PixelVec2 | null) => {
+      console.log("movecursor", _pos, delta);
       if (delta == null) {
         return;
       }
       const [dx, dy] = delta;
       setCursorPosition(([prevX, prevY]) => [prevX + dx, prevY + dy]);
     },
-    [cursorPosition]
+    [setCursorPosition]
   );
 
-  React.useEffect(() => {
-    if (isCursorPressed) {
-      paintPixels(cursorPosition);
-    }
-  }, [cursorPosition, isCursorPressed]);
+  const cursorPixelPosition = cursorPosition.map(Math.floor) as [
+    number,
+    number
+  ];
+  useCustomCompareEffect(
+    () => {
+      if (isCursorPressed) {
+        paintPixels(cursorPixelPosition);
+      }
+    },
+    [cursorPixelPosition, isCursorPressed, paintPixels],
+    ([prevPos, ...prevDeps], [nextPos, ...nextDeps]) =>
+      arrayEquals(prevPos, nextPos) && arrayEquals(prevDeps, nextDeps)
+  );
 
   const bcrRef = React.useRef<DOMRect>(new DOMRect());
 
@@ -124,46 +139,33 @@ export default function Editor({
     [artboardClientTransform]
   );
 
-  const locationFromPointerEvent = React.useCallback(
-    (event: React.PointerEvent): M.PixelLocation => {
-      const clientLoc = vec2.fromClientPosition(event);
-      convertClientPositionToArtboard(clientLoc);
-      return vec2.toTuple(clientLoc);
+  const locationFromClientPosition = React.useCallback(
+    (clientLoc: ReadonlyVec2): M.PixelLocation => {
+      const p = vec2.clone(clientLoc);
+      convertClientPositionToArtboard(p);
+      return vec2.toTuple(p);
     },
     [convertClientPositionToArtboard]
   );
 
-  const onDown = React.useMemo(
-    () => (interactionMode === "direct" ? beginPaint : noop),
-    [interactionMode, beginPaint]
+  const onArtboardPanStart = React.useCallback(
+    (event: typeof Hammer.Input) => {
+      bcrRef.current = event.target.getBoundingClientRect();
+      const pt = locationFromClientPosition(vec2.fromXY(event.center));
+      if (interactionMode === "direct") {
+        beginPaint(pt);
+      }
+      prevPositionRef.current = pt;
+    },
+    [locationFromClientPosition, beginPaint, interactionMode]
   );
-  const onDrag = React.useMemo(
-    () => (interactionMode === "direct" ? paintPixels : moveCursor),
-    [interactionMode, paintPixels, moveCursor]
-  );
 
-  const handlers = React.useMemo((): PointerHandlers => {
-    return {
-      onPointerDown(event) {
-        bcrRef.current = event.currentTarget.getBoundingClientRect();
-        event.currentTarget.setPointerCapture(event.pointerId);
-
-        const pt = locationFromPointerEvent(event);
-        onDown(pt);
-        prevPositionRef.current = pt;
-      },
-      onPointerUp(event) {
-        if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
-          return;
-        }
-        event.currentTarget.releasePointerCapture(event.pointerId);
-
-        const pt = locationFromPointerEvent(event);
-        // onUp(pt);
-        prevPositionRef.current = pt;
-      },
-      onPointerMove(event) {
-        const pt = locationFromPointerEvent(event);
+  const onArtboardPan = React.useCallback(
+    (event: typeof Hammer.Input) => {
+      const pt = locationFromClientPosition(vec2.fromXY(event.center));
+      if (interactionMode === "direct") {
+        paintPixels(pt);
+      } else {
         const delta =
           prevPositionRef.current == null
             ? null
@@ -171,72 +173,84 @@ export default function Editor({
                 pt[0] - prevPositionRef.current[0],
                 pt[1] - prevPositionRef.current[1],
               ] as [number, number]);
-        // onMove(pt, delta);
-        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-          onDrag(pt, delta);
-        }
-        prevPositionRef.current = pt;
-      },
-    };
-  }, [locationFromPointerEvent, onDrag, onDown]);
+        moveCursor(pt, delta);
+      }
+      prevPositionRef.current = pt;
+    },
+    [locationFromClientPosition, paintPixels, moveCursor, interactionMode]
+  );
+
+  const panHandlerRef =
+    React.useRef<React.ElementRef<typeof ReactHammer>>(null);
 
   return (
-    <div className={classNames(styles.container)} {...handlers}>
-      <div
-        className={classNames(styles.artboard)}
-        style={{
-          width: artboardClientSize[0],
-          height: artboardClientSize[1],
-        }}
-      >
-        <Artboard
-          ref={artboardRef}
-          sprite={activeSprite}
-          transform={artboardClientTransform}
-        />
-        {interactionMode === "cursor" ? (
-          <div
-            className={styles.cursor}
-            style={vec2.toLeftTop(absoluteCursorPosition)}
-          />
-        ) : (
-          <></>
-        )}
-      </div>
-      <Toolbar
-        className={styles.toolbar}
-        activeTool={activeTool}
-        onSelectTool={setActiveTool}
-        onTapButton={(button) => {
-          switch (button) {
-            case "undo":
-              return undo();
-            case "redo":
-              return redo();
-            case "export":
-              return exportAsFile();
-            default:
-              return absurd(button);
-          }
-        }}
-      />
-      <Palette className={styles.palette} onSelectColor={setActiveColor} />
-      {interactionMode === "cursor" && (
+    <ReactHammer
+      ref={panHandlerRef}
+      onPanStart={onArtboardPanStart}
+      onPan={onArtboardPan}
+      options={{
+        touchAction: "none",
+      }}
+    >
+      <div className={classNames(styles.container)}>
         <div
-          className={styles.cursorButton}
-          onPointerDown={(event) => {
-            setIsCursorPressed(true);
-            beginPaint(cursorPosition);
-            event.stopPropagation();
-          }}
-          onPointerUp={() => {
-            setIsCursorPressed(false);
+          className={classNames(styles.artboard)}
+          style={{
+            width: artboardClientSize[0],
+            height: artboardClientSize[1],
           }}
         >
-          Paint
+          <Artboard
+            ref={artboardRef}
+            sprite={activeSprite}
+            transform={artboardClientTransform}
+          />
+          {interactionMode === "cursor" ? (
+            <div
+              className={styles.cursor}
+              style={vec2.toLeftTop(absoluteCursorPosition)}
+            />
+          ) : (
+            <></>
+          )}
         </div>
-      )}
-    </div>
+        <Toolbar
+          className={styles.toolbar}
+          activeTool={activeTool}
+          onSelectTool={setActiveTool}
+          onTapButton={(button) => {
+            switch (button) {
+              case "undo":
+                return undo();
+              case "redo":
+                return redo();
+              case "export":
+                return exportAsFile();
+              default:
+                return absurd(button);
+            }
+          }}
+        />
+        <Palette className={styles.palette} onSelectColor={setActiveColor} />
+        {interactionMode === "cursor" && (
+          <ReactHammer
+            recognizeWith={{
+              pan: panHandlerRef.current!,
+            }}
+            onPress={(event) => {
+              setIsCursorPressed(true);
+              beginPaint(cursorPosition);
+              // event.stopPropagation();
+            }}
+            onPressUp={() => {
+              setIsCursorPressed(false);
+            }}
+          >
+            <div className={styles.cursorButton}>Paint</div>
+          </ReactHammer>
+        )}
+      </div>
+    </ReactHammer>
   );
 }
 

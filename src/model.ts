@@ -132,30 +132,29 @@ export const Sprite = {
     }
   },
 
-  /*
   getPixel(sprite: Sprite, pixelLocation: PixelLocation): PixelContent {
+    const spriteSize = Sprite.getSize(sprite);
     if (
       vec2.x(pixelLocation) < 0 ||
-      vec2.x(pixelLocation) >= vec2.x(sprite.size)
+      vec2.x(pixelLocation) >= vec2.x(spriteSize)
     ) {
       throw new Error("Out of bounds");
     }
     if (
       vec2.y(pixelLocation) < 0 ||
-      vec2.y(pixelLocation) >= vec2.y(sprite.size)
+      vec2.y(pixelLocation) >= vec2.y(spriteSize)
     ) {
       throw new Error("Out of bounds");
     }
     const offset =
-      (vec2.x(pixelLocation) + vec2.x(sprite.size) * vec2.y(pixelLocation)) * 4;
-    return Array.from(sprite.imageData.slice(offset, offset + 5)) as [
+      (vec2.x(pixelLocation) + vec2.x(spriteSize) * vec2.y(pixelLocation)) * 4;
+    return Array.from(sprite.imageData.data.slice(offset, offset + 4)) as [
       number,
       number,
       number,
       number
     ];
   },
-  */
 
   updateEditHash(s: Sprite): void {
     s.editHash = uuid();

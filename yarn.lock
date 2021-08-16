@@ -1738,6 +1738,11 @@
   dependencies:
     "@types/node" "*"
 
+"@types/hammerjs@*", "@types/hammerjs@^2.0.40":
+  version "2.0.40"
+  resolved "https://registry.yarnpkg.com/@types/hammerjs/-/hammerjs-2.0.40.tgz#ded0240b6ea1ad7afc1e60374c49087aaea5dbd8"
+  integrity sha512-VbjwR1fhsn2h2KXAY4oy1fm7dCxaKy0D+deTb8Ilc3Eo3rc5+5eA4rfYmZaHgNJKxVyI0f6WIXzO2zLkVmQPHA==
+
 "@types/hoist-non-react-statics@^3.3.0":
   version "3.3.1"
   resolved "https://registry.yarnpkg.com/@types/hoist-non-react-statics/-/hoist-non-react-statics-3.3.1.tgz#1124aafe5118cb591977aeb1ceaaed1070eb039f"
@@ -1846,6 +1851,14 @@
   resolved "https://registry.yarnpkg.com/@types/react-dom/-/react-dom-17.0.9.tgz#441a981da9d7be117042e1a6fd3dac4b30f55add"
   integrity sha512-wIvGxLfgpVDSAMH5utdL9Ngm5Owu0VsGmldro3ORLXV8CShrL8awVj06NuEXFQ5xyaYfdca7Sgbk/50Ri1GdPg==
   dependencies:
+    "@types/react" "*"
+
+"@types/react-hammerjs@^1.0.2":
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/@types/react-hammerjs/-/react-hammerjs-1.0.2.tgz#2c3ce5686d35dd3feeb0d55b76921546e3afe437"
+  integrity sha512-4VuvxnXtZTMZMaZJinKYnUMtQvY1UfFScGAFR4v0ESl+BBv4kmuIkc9ruxu9YSn30poYuAkhhlz6ElVN3wEqSQ==
+  dependencies:
+    "@types/hammerjs" "*"
     "@types/react" "*"
 
 "@types/react-redux@^7.1.16":
@@ -2066,6 +2079,18 @@
   dependencies:
     "@typescript-eslint/types" "4.15.2"
     eslint-visitor-keys "^2.0.0"
+
+"@use-gesture/core@^10.0.0-beta.22":
+  version "10.0.0-beta.22"
+  resolved "https://registry.yarnpkg.com/@use-gesture/core/-/core-10.0.0-beta.22.tgz#5627dd00137462e306116942aedeadf249634353"
+  integrity sha512-nFPsMiHii99huDpeKjC9e5Ggagn4M/UAb3DFWw1/dEZl1fJSfFobrNdtB+5sPOTwyDBBsKpk4oS7Nde4coGDzA==
+
+"@use-gesture/react@^10.0.0-beta.22":
+  version "10.0.0-beta.22"
+  resolved "https://registry.yarnpkg.com/@use-gesture/react/-/react-10.0.0-beta.22.tgz#e88da83d1eedde4f422d53a09fbc09522e823a67"
+  integrity sha512-6ZTpyK1XwL6xgzV0LArxE/rMBNueOiIp0LJoKHdX5/LSf33unMd/E7v9YGOf55NM7vl0tOevpa9f5gSlw4Pvhw==
+  dependencies:
+    "@use-gesture/core" "^10.0.0-beta.22"
 
 "@webassemblyjs/ast@1.9.0":
   version "1.9.0"
@@ -5425,6 +5450,11 @@ gzip-size@5.1.1:
   dependencies:
     duplexer "^0.1.1"
     pify "^4.0.1"
+
+hammerjs@^2.0.8:
+  version "2.0.8"
+  resolved "https://registry.yarnpkg.com/hammerjs/-/hammerjs-2.0.8.tgz#04ef77862cff2bb79d30f7692095930222bf60f1"
+  integrity sha1-BO93hiz/K7edMPdpIJWTAiK/YPE=
 
 handle-thing@^2.0.0:
   version "2.0.1"
@@ -9135,6 +9165,13 @@ react-error-overlay@^6.0.9:
   version "6.0.9"
   resolved "https://registry.yarnpkg.com/react-error-overlay/-/react-error-overlay-6.0.9.tgz#3c743010c9359608c375ecd6bc76f35d93995b0a"
   integrity sha512-nQTTcUu+ATDbrSD1BZHr5kgSD4oF8OFjxun8uAaL8RwPBacGBNPf/yAuVVdx17N8XNzRDMrZ9XcKZHCjPW+9ew==
+
+react-hammerjs@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/react-hammerjs/-/react-hammerjs-1.0.1.tgz#bc1ed9e9ef7da057163fb169ce12917b6d6ca7d8"
+  integrity sha1-vB7Z6e99oFcWP7FpzhKRe21sp9g=
+  dependencies:
+    hammerjs "^2.0.8"
 
 react-is@^16.13.1, react-is@^16.7.0, react-is@^16.8.1:
   version "16.13.1"
