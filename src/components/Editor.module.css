@@ -23,3 +23,23 @@
 .palette {
   position: absolute;
 }
+
+.cursor {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 6px;
+  border: 1px solid black;
+  background-color: hsla(0, 0%, 100%, 50%);
+  box-shadow: 0 0 2px hsla(0, 0%, 0%, 70%);
+  transform: translate(-50%, -50%);
+}
+
+.cursorButton {
+  position: absolute;
+  padding: 10px;
+  background-color: orange;
+  right: 20px;
+  bottom: 20px;
+  user-select: none;
+}

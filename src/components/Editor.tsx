@@ -11,6 +11,7 @@ import { Vec2, mat2d, vec2 } from "../utility/gl-matrix";
 import { PointerHandlers } from "../utility/PointerHandlers";
 import { useValueFromInnerWindowSize } from "../utility/useWindowResize";
 import arrayEquals from "../utility/arrayEquals";
+import absurd from "../utility/absurd";
 
 interface Props {
   setActiveTool: (tool: M.Tool) => void;
@@ -38,6 +39,7 @@ export default function Editor({
   redo,
 }: Props) {
   const [interactionMode] = React.useState<"cursor" | "direct">("cursor");
+  const [isCursorPressed, setIsCursorPressed] = React.useState(false);
 
   const artboardRef = React.useRef<React.ElementRef<typeof Artboard>>(null);
 
@@ -99,15 +101,15 @@ export default function Editor({
       }
       const [dx, dy] = delta;
       setCursorPosition(([prevX, prevY]) => [prevX + dx, prevY + dy]);
-      paintPixels(cursorPosition);
     },
     [cursorPosition]
   );
 
-  //
-  // TODO: cursor movement is bad perforance: i think unrolling
-  // ArtboardInteractionHandler will reduce a lot of renders
-  //
+  React.useEffect(() => {
+    if (isCursorPressed) {
+      paintPixels(cursorPosition);
+    }
+  }, [cursorPosition, isCursorPressed]);
 
   const bcrRef = React.useRef<DOMRect>(new DOMRect());
 
@@ -131,16 +133,6 @@ export default function Editor({
     [convertClientPositionToArtboard]
   );
 
-  React.useEffect(() => {
-    console.log("change");
-  }, [
-    locationFromPointerEvent, //
-    // onMove, //
-    // onDrag, //
-    // onDown, //
-    // onUp, //
-  ]);
-
   const onDown = React.useMemo(
     () => (interactionMode === "direct" ? beginPaint : noop),
     [interactionMode, beginPaint]
@@ -161,6 +153,9 @@ export default function Editor({
         prevPositionRef.current = pt;
       },
       onPointerUp(event) {
+        if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
+          return;
+        }
         event.currentTarget.releasePointerCapture(event.pointerId);
 
         const pt = locationFromPointerEvent(event);
@@ -201,17 +196,8 @@ export default function Editor({
         />
         {interactionMode === "cursor" ? (
           <div
-            style={{
-              position: "absolute",
-              width: 10,
-              height: 10,
-              borderRadius: 6,
-              border: "1px solid black",
-              backgroundColor: "hsla(0, 0%, 100%, 50%)",
-              boxShadow: "0 0 2px hsla(0, 0%, 0%, 70%)",
-              transform: ["translate(-50%, -50%)"].join(" "),
-              ...vec2.toLeftTop(absoluteCursorPosition),
-            }}
+            className={styles.cursor}
+            style={vec2.toLeftTop(absoluteCursorPosition)}
           />
         ) : (
           <></>
@@ -221,11 +207,35 @@ export default function Editor({
         className={styles.toolbar}
         activeTool={activeTool}
         onSelectTool={setActiveTool}
-        onSelectUndo={undo}
-        onSelectRedo={redo}
-        onSelectExport={exportAsFile}
+        onTapButton={(button) => {
+          switch (button) {
+            case "undo":
+              return undo();
+            case "redo":
+              return redo();
+            case "export":
+              return exportAsFile();
+            default:
+              return absurd(button);
+          }
+        }}
       />
       <Palette className={styles.palette} onSelectColor={setActiveColor} />
+      {interactionMode === "cursor" && (
+        <div
+          className={styles.cursorButton}
+          onPointerDown={(event) => {
+            setIsCursorPressed(true);
+            beginPaint(cursorPosition);
+            event.stopPropagation();
+          }}
+          onPointerUp={() => {
+            setIsCursorPressed(false);
+          }}
+        >
+          Paint
+        </div>
+      )}
     </div>
   );
 }
