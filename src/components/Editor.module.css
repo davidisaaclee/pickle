@@ -3,6 +3,7 @@
   flex-flow: column;
   height: 100%;
   background-color: lightgray;
+  touch-action: none;
 }
 
 .artboard {
