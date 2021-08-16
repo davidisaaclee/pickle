@@ -7,8 +7,8 @@ interface Props {
   artboardClientTransform: ReadonlyMat2d;
   onDown?: (artboardPos: M.PixelLocation) => void;
   onUp?: (artboardPos: M.PixelLocation) => void;
-  onDrag?: (artboardPos: M.PixelLocation) => void;
-  onMove?: (artboardPos: M.PixelLocation) => void;
+  onDrag?: (artboardPos: M.PixelLocation, delta: M.PixelVec2 | null) => void;
+  onMove?: (artboardPos: M.PixelLocation, delta: M.PixelVec2 | null) => void;
   children: (handlers: PointerHandlers) => JSX.Element;
 }
 
@@ -22,6 +22,8 @@ export default function ArtboardInteractionHandler({
 }: Props) {
   const bcrRef = React.useRef<DOMRect>(new DOMRect());
 
+  const prevPositionRef = React.useRef<[number, number] | null>(null);
+
   // mutates input
   const convertClientPositionToArtboard = React.useCallback(
     (clientPos: Vec2): void => {
@@ -31,36 +33,49 @@ export default function ArtboardInteractionHandler({
     [artboardClientTransform]
   );
 
+  const locationFromPointerEvent = React.useCallback(
+    (event: React.PointerEvent): M.PixelLocation => {
+      const clientLoc = vec2.fromClientPosition(event);
+      convertClientPositionToArtboard(clientLoc);
+      return vec2.toTuple(clientLoc);
+    },
+    [convertClientPositionToArtboard]
+  );
+
   const handlers = React.useMemo(
     (): PointerHandlers => ({
       onPointerDown(event) {
         bcrRef.current = event.currentTarget.getBoundingClientRect();
         event.currentTarget.setPointerCapture(event.pointerId);
 
-        const clientLoc = vec2.fromClientPosition(event);
-        convertClientPositionToArtboard(clientLoc);
-        onDown(vec2.toTuple(clientLoc));
+        const pt = locationFromPointerEvent(event);
+        onDown(pt);
+        prevPositionRef.current = pt;
       },
       onPointerUp(event) {
         event.currentTarget.releasePointerCapture(event.pointerId);
 
-        const clientLoc = vec2.fromClientPosition(event);
-        convertClientPositionToArtboard(clientLoc);
-        onUp(vec2.toTuple(clientLoc));
+        const pt = locationFromPointerEvent(event);
+        onUp(pt);
+        prevPositionRef.current = pt;
       },
       onPointerMove(event) {
-        const clientLoc = vec2.fromClientPosition(event);
-        convertClientPositionToArtboard(clientLoc);
-        const pt = vec2.toTuple(clientLoc);
-        onMove(pt);
-
-        if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
-          return;
+        const pt = locationFromPointerEvent(event);
+        const delta =
+          prevPositionRef.current == null
+            ? null
+            : ([
+                pt[0] - prevPositionRef.current[0],
+                pt[1] - prevPositionRef.current[1],
+              ] as [number, number]);
+        onMove(pt, delta);
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+          onDrag(pt, delta);
         }
-        onDrag(pt);
+        prevPositionRef.current = pt;
       },
     }),
-    [convertClientPositionToArtboard, onMove, onDrag, onDown, onUp]
+    [locationFromPointerEvent, onMove, onDrag, onDown, onUp]
   );
   return children(handlers);
 }

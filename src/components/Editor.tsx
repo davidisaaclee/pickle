@@ -1,3 +1,4 @@
+import { noop } from "lodash";
 import * as React from "react";
 import classNames from "classnames";
 import Artboard from "../components/Artboard";
@@ -6,7 +7,7 @@ import Toolbar from "../components/Toolbar";
 import Palette from "../components/Palette";
 import * as M from "../model";
 import styles from "./Editor.module.css";
-import { ReadonlyVec2, mat2d, vec2 } from "../utility/gl-matrix";
+import { mat2d, vec2 } from "../utility/gl-matrix";
 import { useValueFromInnerWindowSize } from "../utility/useWindowResize";
 
 interface Props {
@@ -34,6 +35,8 @@ export default function Editor({
   undo,
   redo,
 }: Props) {
+  const [interactionMode] = React.useState<"cursor" | "direct">("cursor");
+
   const artboardRef = React.useRef<React.ElementRef<typeof Artboard>>(null);
 
   const artboardClientSize = useValueFromInnerWindowSize<[number, number]>(
@@ -45,8 +48,8 @@ export default function Editor({
 
   const spriteSize = M.Sprite.getSize(activeSprite);
 
-  /** if `v` is a client position, the following will give the artboard
-   * coordinates:
+  /** if `v` is a client position (relative to `Artboard`), the following will
+   * give the artboard coordinates:
    *     vec2.transformMat2d(v, v, artboardClientTransform) */
   const artboardClientTransform = React.useMemo(() => {
     const out = mat2d.create();
@@ -65,9 +68,9 @@ export default function Editor({
     downloadURI(dataUri, "da-update");
   }, []);
 
-  const [cursorPosition, setCursorPosition] = React.useState<ReadonlyVec2>(
-    vec2.fromValues(5, 5)
-  );
+  const [cursorPosition, setCursorPosition] = React.useState<[number, number]>([
+    5, 5,
+  ]);
 
   const absoluteCursorPosition = React.useMemo(
     () =>
@@ -79,12 +82,19 @@ export default function Editor({
     [cursorPosition, artboardClientTransform]
   );
 
+  const moveCursor = React.useCallback((_pos, delta: M.PixelVec2 | null) => {
+    if (delta == null) {
+      return;
+    }
+    const [dx, dy] = delta;
+    setCursorPosition(([prevX, prevY]) => [prevX + dx, prevY + dy]);
+  }, []);
+
   return (
     <div className={classNames(styles.container)}>
       <ArtboardInteractionHandler
-        onDown={beginPaint}
-        onDrag={paintPixels}
-        onMove={setCursorPosition}
+        onDown={interactionMode === "direct" ? beginPaint : noop}
+        onDrag={interactionMode === "direct" ? paintPixels : moveCursor}
         artboardClientTransform={artboardClientTransform}
       >
         {(handlers) => (
@@ -100,16 +110,20 @@ export default function Editor({
               sprite={activeSprite}
               transform={artboardClientTransform}
             >
-              <div
-                style={{
-                  position: "absolute",
-                  width: 10,
-                  height: 10,
-                  backgroundColor: "black",
-                  transform: ["translate(-50%, -50%)"].join(" "),
-                  ...vec2.toLeftTop(absoluteCursorPosition),
-                }}
-              />
+              {interactionMode === "cursor" ? (
+                <div
+                  style={{
+                    position: "absolute",
+                    width: 10,
+                    height: 10,
+                    backgroundColor: "black",
+                    transform: ["translate(-50%, -50%)"].join(" "),
+                    ...vec2.toLeftTop(absoluteCursorPosition),
+                  }}
+                />
+              ) : (
+                <></>
+              )}
             </Artboard>
           </>
         )}
