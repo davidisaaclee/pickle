@@ -158,3 +158,20 @@ export const Sprite = {
     s.editHash = uuid();
   },
 };
+
+export interface Animation {
+  sprites: Sprite[];
+}
+
+export const Animation = {
+  deepClone(animation: Animation): Animation {
+    return {
+      sprites: animation.sprites.map(Sprite.deepClone),
+    };
+  },
+};
+
+export interface AnimationPlayback {
+  currentFrame: number;
+  isPlaying: boolean;
+}

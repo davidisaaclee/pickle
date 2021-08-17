@@ -3,18 +3,20 @@ import * as M from "../model";
 
 interface State {
   history: {
-    frames: Array<M.Sprite>;
+    frames: Array<M.Animation>;
     cursor: number;
   };
+  playback: M.AnimationPlayback;
   activeTool: M.Tool;
   activeColor: M.PixelContent;
 }
 
 export const initialState: State = {
   history: {
-    frames: [M.Sprite.create()],
+    frames: [{ sprites: [M.Sprite.create()] }],
     cursor: 0,
   },
+  playback: { currentFrame: 0, isPlaying: false },
   activeTool: "pen",
   activeColor: [255, 0, 0, 255],
 };
@@ -33,9 +35,62 @@ export const actions = {
 
 export const selectors = {
   activeSprite(state: State): M.Sprite {
-    return state.history.frames[state.history.cursor];
+    const playback = state.playback;
+    return state.history.frames[state.history.cursor].sprites[
+      playback.currentFrame
+    ];
   },
 };
+
+export const reducer = createReducer(initialState, (builder) => {
+  builder
+    .addCase(actions.undo, (state) => {
+      state.history.cursor = Math.max(0, state.history.cursor - 1);
+    })
+    .addCase(actions.redo, (state) => {
+      state.history.cursor = Math.min(
+        state.history.frames.length - 1,
+        state.history.cursor + 1
+      );
+    })
+    .addCase(
+      actions.paintPixels,
+      (state, { payload: { locations, content } }) => {
+        const activeSprite = selectors.activeSprite(state);
+        M.Sprite.setPixelsRGBA(activeSprite, locations, content);
+        M.Sprite.updateEditHash(activeSprite);
+      }
+    )
+    .addCase(actions.setActiveTool, (state, { payload: nextActiveTool }) => {
+      state.activeTool = nextActiveTool;
+    })
+    .addCase(actions.setActiveColor, (state, { payload: nextActiveColor }) => {
+      state.activeColor = nextActiveColor;
+    })
+    .addCase(actions.pushHistory, (state) => {
+      if (state.history.cursor < state.history.frames.length - 1) {
+        state.history.frames.splice(
+          state.history.cursor + 1,
+          state.history.frames.length - state.history.cursor
+        );
+      }
+
+      state.history.frames.push(
+        M.Animation.deepClone(
+          state.history.frames[state.history.frames.length - 1]
+        )
+      );
+
+      state.history.cursor += 1;
+    })
+    .addMatcher(
+      () => true,
+      (state, action) => {
+        console.log("Action:", action);
+        return state;
+      }
+    );
+});
 
 /*
 type AppAction = ReturnType<typeof actions[keyof typeof actions]>;
@@ -144,53 +199,3 @@ export const reducer = (state: State, action: AppAction): State => {
   }
 };
 */
-
-export const reducer = createReducer(initialState, (builder) => {
-  builder
-    .addCase(actions.undo, (state) => {
-      state.history.cursor = Math.max(0, state.history.cursor - 1);
-    })
-    .addCase(actions.redo, (state) => {
-      state.history.cursor = Math.min(
-        state.history.frames.length - 1,
-        state.history.cursor + 1
-      );
-    })
-    .addCase(
-      actions.paintPixels,
-      (state, { payload: { locations, content } }) => {
-        const activeSprite = state.history.frames[state.history.cursor];
-        M.Sprite.setPixelsRGBA(activeSprite, locations, content);
-        M.Sprite.updateEditHash(activeSprite);
-      }
-    )
-    .addCase(actions.setActiveTool, (state, { payload: nextActiveTool }) => {
-      state.activeTool = nextActiveTool;
-    })
-    .addCase(actions.setActiveColor, (state, { payload: nextActiveColor }) => {
-      state.activeColor = nextActiveColor;
-    })
-    .addCase(actions.pushHistory, (state) => {
-      if (state.history.cursor < state.history.frames.length - 1) {
-        state.history.frames.splice(
-          state.history.cursor + 1,
-          state.history.frames.length - state.history.cursor
-        );
-      }
-
-      state.history.frames.push(
-        M.Sprite.deepClone(
-          state.history.frames[state.history.frames.length - 1]
-        )
-      );
-
-      state.history.cursor += 1;
-    })
-    .addMatcher(
-      () => true,
-      (state, action) => {
-        console.log("Action:", action);
-        return state;
-      }
-    );
-});
