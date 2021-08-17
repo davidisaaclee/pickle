@@ -1,5 +1,6 @@
-import { clamp } from "lodash";
+import { inRange, clamp } from "lodash";
 import { createReducer, createAction } from "@reduxjs/toolkit";
+import arrayEquals from "../utility/arrayEquals";
 import * as M from "../model";
 import { State } from "./state";
 import * as L from "./lenses";
@@ -18,6 +19,10 @@ export const initialState: State = {
 };
 
 export const actions = {
+  paintBucket:
+    createAction<{ location: M.PixelLocation; content: M.PixelContent }>(
+      "paintBucket"
+    ),
   paintPixels:
     createAction<{ locations: M.PixelLocation[]; content: M.PixelContent }>(
       "paintPixels"
@@ -84,6 +89,67 @@ export const reducer = createReducer(initialState, (builder) => {
       M.Sprite.setPixelsRGBA(sprite, [[1, 1]], [0, 0xff, 0xff, 0xff]);
       L.currentFrameIndex.update(state, (f) => f + 1);
     })
+    .addCase(
+      actions.paintBucket,
+      (state, { payload: { location, content } }) => {
+        let count = 0;
+        const queue: Array<readonly [number, number]> = [location];
+        const checked: Record<string, boolean> = {};
+
+        const hashLocation = (loc: readonly [number, number]) => loc.join(", ");
+
+        const sprite = selectors.activeSprite(state);
+        const [spriteWidth, spriteHeight] = M.Sprite.getSize(sprite);
+
+        const matchColor = M.Sprite.getPixel(sprite, location);
+
+        const isInside = ([x, y]: readonly [number, number]) =>
+          inRange(x, 0, spriteWidth) &&
+          inRange(y, 0, spriteHeight) &&
+          arrayEquals(M.Sprite.getPixel(sprite, [x, y]), matchColor);
+
+        while (queue.length > 0) {
+          count++;
+          if (count > 9999) {
+            throw new Error(
+              "Bucket is taking too long! Stopping to prevent locking up the client."
+            );
+          }
+          const n = queue.pop();
+          if (n == null) {
+            break;
+          }
+
+          const hashed = hashLocation(n);
+          if (checked[hashed]) {
+            continue;
+          }
+
+          checked[hashed] = true;
+
+          const [x, y] = n;
+
+          if (isInside(n)) {
+            M.Sprite.setPixelsRGBA(sprite, [n], content);
+
+            (
+              [
+                [x - 1, y + 0],
+                [x + 1, y + 0],
+                [x + 0, y - 1],
+                [x + 0, y + 1],
+              ] as const
+            ).forEach((p) => {
+              if (isInside(p)) {
+                queue.push(p);
+              }
+            });
+          }
+        }
+
+        M.Sprite.updateEditHash(sprite);
+      }
+    )
     .addCase(actions.movePlayhead, (state, { payload: frame }) => {
       L.currentFrameIndex.set(
         state,

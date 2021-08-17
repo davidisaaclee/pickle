@@ -8,6 +8,7 @@ export type PixelContent = [number, number, number, number];
 const _toolSet = {
   pen: true,
   eraser: true,
+  bucket: true,
 } as const;
 
 export type Tool = keyof typeof _toolSet;

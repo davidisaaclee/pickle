@@ -3,6 +3,7 @@ import * as M from "../model";
 import { vec2 } from "../utility/gl-matrix";
 import Editor from "./Editor";
 import { reducer, initialState, selectors, actions } from "./reducer";
+import absurd from "../utility/absurd";
 
 interface ConsoleOverride<T> {
   log: (...args: any[]) => T;
@@ -39,27 +40,44 @@ export default function App() {
 
   const paintPixels = React.useCallback(
     (artboardPos: readonly [number, number]) => {
-      const content =
-        state.activeTool === "pen"
-          ? state.activeColor
-          : ([0, 0, 0, 0] as M.PixelContent);
       const loc = vec2.toTuple(vec2.floor(vec2.create(), artboardPos));
-      dispatchRef.current(
-        actions.paintPixels({
-          locations: [loc],
-          content,
-        })
-      );
+
+      if (state.activeTool === "pen" || state.activeTool === "eraser") {
+        const content =
+          state.activeTool === "pen"
+            ? state.activeColor
+            : ([0, 0, 0, 0] as M.PixelContent);
+        dispatchRef.current(
+          actions.paintPixels({
+            locations: [loc],
+            content,
+          })
+        );
+      } else if (state.activeTool === "bucket") {
+        // Nothing
+      } else {
+        return absurd(state.activeTool);
+      }
     },
     [state.activeColor, state.activeTool]
   );
 
   const beginPaint = React.useCallback(
     (artboardPos: readonly [number, number]) => {
-      dispatchRef.current(actions.pushHistory());
-      paintPixels(vec2.toTuple(artboardPos));
+      const loc = vec2.toTuple(vec2.floor(vec2.create(), artboardPos));
+      if (state.activeTool === "bucket") {
+        dispatchRef.current(
+          actions.paintBucket({
+            location: loc,
+            content: state.activeColor,
+          })
+        );
+      } else {
+        dispatchRef.current(actions.pushHistory());
+        paintPixels(loc);
+      }
     },
-    [paintPixels]
+    [paintPixels, state.activeTool, state.activeColor]
   );
 
   const _setActiveColor = React.useCallback(
