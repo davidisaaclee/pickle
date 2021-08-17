@@ -158,6 +158,74 @@ export const Sprite = {
   updateEditHash(s: Sprite): void {
     s.editHash = uuid();
   },
+
+  overlaySprite(
+    out: Sprite,
+    { spriteToOverlay }: { spriteToOverlay: Sprite }
+  ): void {
+    if (
+      out.imageData.width !== spriteToOverlay.imageData.width ||
+      out.imageData.height !== spriteToOverlay.imageData.height
+    ) {
+      throw new Error();
+    }
+
+    for (
+      let pixelIndex = 0;
+      pixelIndex <
+      spriteToOverlay.imageData.width * spriteToOverlay.imageData.height;
+      pixelIndex++
+    ) {
+      const offset = pixelIndex * 4;
+      const alpha = spriteToOverlay.imageData.data[offset + 3];
+      if (alpha === 0) {
+        continue;
+      }
+      out.imageData.data[offset + 0] =
+        spriteToOverlay.imageData.data[offset + 0];
+      out.imageData.data[offset + 1] =
+        spriteToOverlay.imageData.data[offset + 1];
+      out.imageData.data[offset + 2] =
+        spriteToOverlay.imageData.data[offset + 2];
+      out.imageData.data[offset + 3] = 0xff;
+    }
+  },
+
+  serialize(spr: Sprite): string {
+    return JSON.stringify({
+      size: [spr.imageData.width, spr.imageData.height],
+      data: Array.from(spr.imageData.data),
+    });
+  },
+
+  deserialize(serialized: string): Sprite {
+    const obj = JSON.parse(serialized);
+    if (obj.size == null) {
+      throw new Error();
+    }
+    if (obj.data == null) {
+      throw new Error();
+    }
+    if (
+      !(obj.size instanceof Array) ||
+      obj.size.length !== 2 ||
+      obj.size.some((n: any) => typeof n !== "number")
+    ) {
+      throw new Error();
+    }
+    if (
+      !(obj.data instanceof Array) ||
+      obj.size.some((n: any) => typeof n !== "number")
+    ) {
+      throw new Error();
+    }
+
+    const out = Sprite.create({
+      size: [obj.size[0], obj.size[1]],
+    });
+    out.imageData.data.set(obj.data);
+    return out;
+  },
 };
 
 export interface Animation {

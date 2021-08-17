@@ -126,6 +126,20 @@ export default function App() {
             dispatch(actions.pushHistory());
             dispatch(actions.duplicateCurrentAnimationFrame());
           },
+          copyFrame: () => {
+            localStorage.setItem(
+              "pasteboard",
+              M.Sprite.serialize(activeSprite)
+            );
+          },
+          pasteFrame: async () => {
+            const pasted = localStorage.getItem("pasteboard");
+            if (pasted == null) {
+              return;
+            }
+
+            dispatch(actions.overlaySprite(M.Sprite.deserialize(pasted)));
+          },
         }}
       />
       {/*

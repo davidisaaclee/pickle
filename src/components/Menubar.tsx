@@ -2,7 +2,13 @@ import classNames from "classnames";
 import * as React from "react";
 import styles from "./Menubar.module.css";
 
-type MomentaryButton = "undo" | "redo" | "export" | "toggle-cursor";
+type MomentaryButton =
+  | "undo"
+  | "redo"
+  | "export"
+  | "toggle-cursor"
+  | "copy-frame"
+  | "paste-frame";
 
 interface Props {
   onTapButton: (button: MomentaryButton) => void;
@@ -15,6 +21,18 @@ export default function Menubar({ onTapButton, className, style }: Props) {
     <div className={classNames(className, styles.container)} style={style}>
       <button className={styles.button} onClick={() => onTapButton("export")}>
         Export
+      </button>
+      <button
+        className={styles.button}
+        onClick={() => onTapButton("copy-frame")}
+      >
+        Copy frame
+      </button>
+      <button
+        className={styles.button}
+        onClick={() => onTapButton("paste-frame")}
+      >
+        Paste frame
       </button>
       <button
         className={styles.button}

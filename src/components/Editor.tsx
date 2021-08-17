@@ -37,6 +37,8 @@ interface Props {
   duplicateCurrentAnimationFrame: () => void;
   setPlayhead: (index: number) => void;
   currentFrameIndex: number;
+  copyFrame: () => void;
+  pasteFrame: () => void;
 }
 
 export default function Editor({
@@ -54,6 +56,8 @@ export default function Editor({
   duplicateCurrentAnimationFrame,
   setPlayhead,
   currentFrameIndex,
+  copyFrame,
+  pasteFrame,
 }: Props) {
   const [interactionMode, setInteractionMode] = React.useState<
     "cursor" | "direct"
@@ -251,6 +255,10 @@ export default function Editor({
               return setInteractionMode((prev) =>
                 prev === "cursor" ? "direct" : "cursor"
               );
+            case "copy-frame":
+              return copyFrame();
+            case "paste-frame":
+              return pasteFrame();
             default:
               return absurd(button);
           }

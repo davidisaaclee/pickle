@@ -16,7 +16,6 @@ interface Props {
   style?: React.CSSProperties;
 }
 
-const emptySprite = M.Sprite.create();
 const SCROLL_SELECTION_LEADING_MARGIN = 0;
 
 export default function Timeline({

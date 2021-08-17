@@ -37,6 +37,7 @@ export const actions = {
     "duplicateCurrentAnimationFrame"
   ),
   movePlayhead: createAction<number>("movePlayhead"),
+  overlaySprite: createAction<M.Sprite>("overlaySprite"),
 } as const;
 
 export const selectors = {
@@ -161,6 +162,13 @@ export const reducer = createReducer(initialState, (builder) => {
         M.Sprite.updateEditHash(sprite);
       }
     )
+    .addCase(actions.overlaySprite, (state, { payload: spriteToOverlay }) => {
+      L.activeSprite.update(state, (sprite) => {
+        M.Sprite.overlaySprite(sprite, { spriteToOverlay });
+        M.Sprite.updateEditHash(sprite);
+        return sprite;
+      });
+    })
     .addCase(actions.movePlayhead, (state, { payload: frame }) => {
       L.currentFrameIndex.set(
         state,
