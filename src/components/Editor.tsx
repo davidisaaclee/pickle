@@ -5,7 +5,7 @@ import {
   useCustomCompareMemo,
   useCustomCompareEffect,
 } from "use-custom-compare";
-import { useDrag } from "@use-gesture/react";
+import * as Gesture from "@use-gesture/react";
 import ReactHammer from "react-hammerjs";
 import * as Hammer from "hammerjs";
 import Artboard from "../components/Artboard";
@@ -43,7 +43,9 @@ export default function Editor({
   undo,
   redo,
 }: Props) {
-  const [interactionMode] = React.useState<"cursor" | "direct">("cursor");
+  const [interactionMode, setInteractionMode] = React.useState<
+    "cursor" | "direct"
+  >("cursor");
   const [isCursorPressed, setIsCursorPressed] = React.useState(false);
 
   const artboardRef = React.useRef<React.ElementRef<typeof Artboard>>(null);
@@ -101,7 +103,6 @@ export default function Editor({
 
   const moveCursor = React.useCallback(
     (_pos, delta: M.PixelVec2 | null) => {
-      console.log("movecursor", _pos, delta);
       if (delta == null) {
         return;
       }
@@ -149,9 +150,11 @@ export default function Editor({
   );
 
   const onArtboardPanStart = React.useCallback(
-    (event: typeof Hammer.Input) => {
-      bcrRef.current = event.target.getBoundingClientRect();
-      const pt = locationFromClientPosition(vec2.fromXY(event.center));
+    (gestureState: Gesture.DragState) => {
+      if (gestureState.target instanceof HTMLElement) {
+        bcrRef.current = gestureState.target.getBoundingClientRect();
+      }
+      const pt = locationFromClientPosition(gestureState.xy);
       if (interactionMode === "direct") {
         beginPaint(pt);
       }
@@ -161,8 +164,8 @@ export default function Editor({
   );
 
   const onArtboardPan = React.useCallback(
-    (event: typeof Hammer.Input) => {
-      const pt = locationFromClientPosition(vec2.fromXY(event.center));
+    (gestureState: Gesture.DragState) => {
+      const pt = locationFromClientPosition(gestureState.xy);
       if (interactionMode === "direct") {
         paintPixels(pt);
       } else {
@@ -180,19 +183,20 @@ export default function Editor({
     [locationFromClientPosition, paintPixels, moveCursor, interactionMode]
   );
 
-  const panHandlerRef =
-    React.useRef<React.ElementRef<typeof ReactHammer>>(null);
+  const bindDrag = Gesture.useDrag(
+    (state) => {
+      if (state.first) {
+        onArtboardPanStart(state);
+      } else {
+        onArtboardPan(state);
+      }
+    },
+    { triggerAllEvents: true }
+  );
 
   return (
-    <ReactHammer
-      ref={panHandlerRef}
-      onPanStart={onArtboardPanStart}
-      onPan={onArtboardPan}
-      options={{
-        touchAction: "none",
-      }}
-    >
-      <div className={classNames(styles.container)}>
+    <div className={classNames(styles.container)}>
+      <div {...bindDrag()} className={styles.artboardStage}>
         <div
           className={classNames(styles.artboard)}
           style={{
@@ -214,43 +218,49 @@ export default function Editor({
             <></>
           )}
         </div>
-        <Toolbar
-          className={styles.toolbar}
-          activeTool={activeTool}
-          onSelectTool={setActiveTool}
-          onTapButton={(button) => {
-            switch (button) {
-              case "undo":
-                return undo();
-              case "redo":
-                return redo();
-              case "export":
-                return exportAsFile();
-              default:
-                return absurd(button);
-            }
-          }}
-        />
-        <Palette className={styles.palette} onSelectColor={setActiveColor} />
-        {interactionMode === "cursor" && (
-          <ReactHammer
-            recognizeWith={{
-              pan: panHandlerRef.current!,
-            }}
-            onPress={(event) => {
-              setIsCursorPressed(true);
-              beginPaint(cursorPosition);
-              // event.stopPropagation();
-            }}
-            onPressUp={() => {
-              setIsCursorPressed(false);
-            }}
-          >
-            <div className={styles.cursorButton}>Paint</div>
-          </ReactHammer>
-        )}
       </div>
-    </ReactHammer>
+      <Toolbar
+        className={styles.toolbar}
+        activeTool={activeTool}
+        onSelectTool={setActiveTool}
+        onTapButton={(button) => {
+          switch (button) {
+            case "undo":
+              return undo();
+            case "redo":
+              return redo();
+            case "export":
+              return exportAsFile();
+            case "toggle-cursor":
+              return setInteractionMode((prev) =>
+                prev === "cursor" ? "direct" : "cursor"
+              );
+            default:
+              return absurd(button);
+          }
+        }}
+      />
+      <Palette className={styles.palette} onSelectColor={setActiveColor} />
+      {interactionMode === "cursor" && (
+        <div
+          className={styles.cursorButton}
+          data-pressed={isCursorPressed}
+          onPointerDown={(event) => {
+            event.currentTarget.setPointerCapture(event.pointerId);
+            event.stopPropagation();
+            setIsCursorPressed(true);
+            beginPaint(cursorPosition);
+          }}
+          onPointerUp={(event) => {
+            event.currentTarget.releasePointerCapture(event.pointerId);
+            event.stopPropagation();
+            setIsCursorPressed(false);
+          }}
+        >
+          Paint
+        </div>
+      )}
+    </div>
   );
 }
 

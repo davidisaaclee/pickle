@@ -1,6 +1,7 @@
 import { inRange, range } from "lodash";
 import { v4 as uuid } from "uuid";
 import { vec2 } from "./utility/gl-matrix";
+import * as ImageDataUtils from "./utility/ImageData";
 
 export type PixelContent = [number, number, number, number];
 
@@ -44,10 +45,7 @@ export const Sprite = {
   deepClone(other: Sprite): Sprite {
     return {
       ...other,
-      imageData: ((img) => {
-        img.data.set(other.imageData.data);
-        return img;
-      })(new ImageData(other.imageData.width, other.imageData.height)),
+      imageData: ImageDataUtils.clone(other.imageData),
     };
   },
 
@@ -114,13 +112,13 @@ export const Sprite = {
     for (const pixelLocation of pixelLocations) {
       if (
         vec2.x(pixelLocation) < 0 ||
-        vec2.x(pixelLocation) > sprite.imageData.width
+        vec2.x(pixelLocation) >= sprite.imageData.width
       ) {
         return;
       }
       if (
         vec2.y(pixelLocation) < 0 ||
-        vec2.y(pixelLocation) > sprite.imageData.height
+        vec2.y(pixelLocation) >= sprite.imageData.height
       ) {
         return;
       }

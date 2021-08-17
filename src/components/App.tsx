@@ -5,6 +5,31 @@ import Editor from "./Editor";
 import { reducer, initialState, selectors, actions } from "./reducer";
 import arrayEquals from "../utility/arrayEquals";
 
+interface ConsoleOverride<T> {
+  log: (...args: any[]) => T;
+  error: (...args: any[]) => T;
+  warn: (...args: any[]) => T;
+}
+
+export function useConsoleOverrides<T = void>(
+  overrides: Partial<ConsoleOverride<T>>
+): T[] {
+  const [log, setLog] = React.useState<T[]>([]);
+
+  React.useEffect(() => {
+    ((c) => {
+      for (const key in overrides) {
+        c[key] = (...args: any) => {
+          const ret = (overrides as any)[key](...args);
+          setLog((prev) => [...prev, ret]);
+        };
+      }
+    })(console as any);
+  }, [overrides]);
+
+  return log;
+}
+
 export default function App() {
   const [state, dispatch] = React.useReducer(reducer, initialState);
 
@@ -13,48 +38,29 @@ export default function App() {
 
   const activeSprite = selectors.activeSprite(state);
 
-  const spriteSize = M.Sprite.getSize(activeSprite);
-
   const paintPixels = React.useCallback(
     (artboardPos: readonly [number, number]) => {
-      if (
-        vec2.x(artboardPos) < 0 ||
-        vec2.x(artboardPos) >= vec2.x(spriteSize)
-      ) {
-        return;
-      }
-      if (
-        vec2.y(artboardPos) < 0 ||
-        vec2.y(artboardPos) >= vec2.y(spriteSize)
-      ) {
-        return;
-      }
-      const color =
+      const content =
         state.activeTool === "pen"
           ? state.activeColor
           : ([0, 0, 0, 0] as M.PixelContent);
       const loc = vec2.toTuple(vec2.floor(vec2.create(), artboardPos));
-      if (arrayEquals(M.Sprite.getPixel(activeSprite, loc), color)) {
-        return;
-      }
-      const nextSprite = ((prev) => {
-        const out = M.Sprite.shallowClone(prev);
-        M.Sprite.setPixelsRGBA(out, [loc], color);
-        M.Sprite.updateEditHash(out);
-        return out;
-      })(activeSprite);
-
-      dispatch(actions.updateActiveSprite(nextSprite));
+      dispatchRef.current(
+        actions.paintPixels({
+          locations: [loc],
+          content,
+        })
+      );
     },
-    [state, spriteSize, activeSprite, dispatch]
+    [state.activeColor, state.activeTool]
   );
 
   const beginPaint = React.useCallback(
     (artboardPos: readonly [number, number]) => {
-      dispatch(actions.pushHistory());
+      dispatchRef.current(actions.pushHistory());
       paintPixels(vec2.toTuple(artboardPos));
     },
-    [paintPixels, dispatch]
+    [paintPixels]
   );
 
   const _setActiveColor = React.useCallback(
@@ -66,18 +72,47 @@ export default function App() {
     dispatchRef.current(actions.setActiveTool(tool));
   }, []);
 
+  // const log = useConsoleOverrides({
+  //   log: (...msgs) => {
+  //     return "LOG: " + msgs.join(" ");
+  //   },
+  //   error: (...msgs) => {
+  //     return "ERROR: " + msgs.join(" ");
+  //   },
+  //   warn: (...msgs) => {
+  //     return "WARN: " + msgs.join(" ");
+  //   },
+  // });
+
   return (
-    <Editor
-      {...{
-        setActiveTool: _setActiveTool,
-        activeTool: state.activeTool,
-        setActiveColor: _setActiveColor,
-        activeSprite,
-        beginPaint,
-        paintPixels,
-        undo: () => dispatch(actions.undo()),
-        redo: () => dispatch(actions.redo()),
-      }}
-    />
+    <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}>
+      <Editor
+        {...{
+          setActiveTool: _setActiveTool,
+          activeTool: state.activeTool,
+          setActiveColor: _setActiveColor,
+          activeSprite,
+          beginPaint,
+          paintPixels,
+          undo: () => dispatch(actions.undo()),
+          redo: () => dispatch(actions.redo()),
+        }}
+      />
+      {/* <div */}
+      {/*   style={{ */}
+      {/*     position: "fixed", */}
+      {/*     top: 0, */}
+      {/*     left: 0, */}
+      {/*     right: 0, */}
+      {/*     height: 100, */}
+      {/*     overflowY: "scroll", */}
+      {/*     backgroundColor: "rgba(255, 255, 255, 0.8)", */}
+      {/*   }} */}
+      {/* > */}
+      {/*   {log.map((l) => ( */}
+      {/*     <code style={{ display: "block" }}>{l}</code> */}
+      {/*   ))} */}
+      {/* </div> */}
+    </div>
   );
 }

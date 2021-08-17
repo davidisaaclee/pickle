@@ -33,6 +33,7 @@ export default function Palette({
     <div className={classNames(styles.container, className)} style={style}>
       {presetPalette.map((color) => (
         <Button
+          className={styles.swatchListItem}
           onClick={() => {
             onSelectColor(color);
           }}
@@ -46,15 +47,17 @@ export default function Palette({
 
 interface ColorSwatch$Props {
   color: [number, number, number, number];
-  className?: string;
   style?: React.CSSProperties;
 }
 
-function ColorSwatch({ color, className, style }: ColorSwatch$Props) {
+function ColorSwatch({ color, style }: ColorSwatch$Props) {
   return (
     <div
-      className={classNames(styles.swatch, className)}
-      style={{ ...style, backgroundColor: rgbaToCss(color) }}
+      className={styles.swatch}
+      style={{
+        ...style,
+        backgroundColor: rgbaToCss(color),
+      }}
     />
   );
 }

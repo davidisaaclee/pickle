@@ -6,7 +6,7 @@ import styles from "./Toolbar.module.css";
 interface Props {
   activeTool: M.Tool;
   onSelectTool: (tool: M.Tool) => void;
-  onTapButton: (tool: "undo" | "redo" | "export") => void;
+  onTapButton: (tool: "undo" | "redo" | "export" | "toggle-cursor") => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -58,6 +58,12 @@ export default function Toolbar({
         onClick={() => onTapButton("export")}
       >
         Export
+      </button>
+      <button
+        className={styles.toolButton}
+        onClick={() => onTapButton("toggle-cursor")}
+      >
+        Toggle cursor
       </button>
     </div>
   );
