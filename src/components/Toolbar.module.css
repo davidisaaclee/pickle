@@ -3,13 +3,18 @@
   flex-flow: column;
 
   color: white;
-  padding: 5px;
+}
+
+.container > * {
+  margin-top: 8px;
+}
+.container > *:first-child {
+  margin-top: 0;
 }
 
 .toolButton {
   width: 50px;
   height: 50px;
-  margin: 0 4px;
   display: flex;
   flex-flow: column;
   align-items: center;
@@ -19,4 +24,10 @@
 
 .toolButton.selected {
   background-color: black;
+}
+
+.toolButton input[type="radio"] {
+  position: fixed;
+  opacity: 0;
+  pointer-events: none;
 }

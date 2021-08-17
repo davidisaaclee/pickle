@@ -109,6 +109,7 @@ export default function App() {
           animation: selectors.activeAnimation(state),
           setActiveTool: _setActiveTool,
           activeTool: state.activeTool,
+          activeColor: selectors.activeColor(state),
           setActiveColor: _setActiveColor,
           activeSprite,
           setPlayhead: (index) => dispatch(actions.movePlayhead(index)),

@@ -2,18 +2,13 @@
   display: grid;
   grid-template-rows: repeat(4, 20px);
   grid-template-columns: repeat(4, 20px);
-  row-gap: 10px;
-  column-gap: 10px;
-
-  margin: 10px;
+  row-gap: 7px;
+  column-gap: 7px;
 }
 
 .swatchListItem {
   width: 20px;
   height: 20px;
-}
-.swatchListItem:first-child {
-  margin-top: 0;
 }
 
 .swatch {

@@ -43,6 +43,7 @@ export const selectors = {
   activeAnimation: L.activeAnimation.get,
   currentFrameIndex: L.currentFrameIndex.get,
   activeSprite: L.activeSprite.get,
+  activeColor: L.activeColor.get,
 };
 
 export const reducer = createReducer(initialState, (builder) => {

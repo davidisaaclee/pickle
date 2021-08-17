@@ -3,17 +3,9 @@ import * as React from "react";
 import * as M from "../model";
 import styles from "./Toolbar.module.css";
 
-type MomentaryButton =
-  | "undo"
-  | "redo"
-  | "export"
-  | "toggle-cursor"
-  | "add-frame";
-
 interface Props {
   activeTool: M.Tool;
   onSelectTool: (tool: M.Tool) => void;
-  onTapButton: (button: MomentaryButton) => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -21,7 +13,6 @@ interface Props {
 export default function Toolbar({
   activeTool,
   onSelectTool,
-  onTapButton,
   className,
   style,
 }: Props) {
@@ -54,30 +45,6 @@ export default function Toolbar({
           {tool}
         </label>
       ))}
-      <button className={styles.toolButton} onClick={() => onTapButton("undo")}>
-        Undo
-      </button>
-      <button className={styles.toolButton} onClick={() => onTapButton("redo")}>
-        Redo
-      </button>
-      <button
-        className={styles.toolButton}
-        onClick={() => onTapButton("export")}
-      >
-        Export
-      </button>
-      <button
-        className={styles.toolButton}
-        onClick={() => onTapButton("toggle-cursor")}
-      >
-        Toggle cursor
-      </button>
-      <button
-        className={styles.toolButton}
-        onClick={() => onTapButton("add-frame")}
-      >
-        Add frame
-      </button>
     </div>
   );
 }

@@ -7,6 +7,7 @@ import {
 import * as Gesture from "@use-gesture/react";
 import Artboard from "../components/Artboard";
 import Toolbar from "../components/Toolbar";
+import Menubar from "../components/Menubar";
 import Palette from "../components/Palette";
 import Timeline from "../components/Timeline";
 import * as M from "../model";
@@ -15,6 +16,7 @@ import { ReadonlyVec2, Vec2, mat2d, vec2 } from "../utility/gl-matrix";
 import { useValueFromInnerWindowSize } from "../utility/useWindowResize";
 import arrayEquals from "../utility/arrayEquals";
 import absurd from "../utility/absurd";
+import { rgbaToCss } from "../utility/colors";
 
 interface Props {
   setActiveTool: (tool: M.Tool) => void;
@@ -23,6 +25,7 @@ interface Props {
   animation: M.Animation;
   activeSprite: M.Sprite;
 
+  activeColor: M.PixelContent;
   setActiveColor: (color: M.PixelContent) => void;
 
   beginPaint: (artboardPos: readonly [number, number]) => void;
@@ -41,6 +44,7 @@ export default function Editor({
   activeTool,
   activeSprite,
   animation,
+  activeColor,
   setActiveColor,
   beginPaint,
   paintPixels,
@@ -225,10 +229,16 @@ export default function Editor({
           )}
         </div>
       </div>
-      <Toolbar
-        className={styles.toolbar}
-        activeTool={activeTool}
-        onSelectTool={setActiveTool}
+      <div className={styles.toolGroup}>
+        <div
+          className={styles.colorSwatch}
+          style={{ backgroundColor: rgbaToCss(activeColor) }}
+        />
+        <Palette onSelectColor={setActiveColor} selectedColor={activeColor} />
+        <Toolbar activeTool={activeTool} onSelectTool={setActiveTool} />
+      </div>
+      <Menubar
+        className={styles.menubar}
         onTapButton={(button) => {
           switch (button) {
             case "undo":
@@ -241,14 +251,11 @@ export default function Editor({
               return setInteractionMode((prev) =>
                 prev === "cursor" ? "direct" : "cursor"
               );
-            case "add-frame":
-              return addBlankAnimationFrame();
             default:
               return absurd(button);
           }
         }}
       />
-      <Palette className={styles.palette} onSelectColor={setActiveColor} />
       <Timeline
         className={styles.timeline}
         sprites={animation.sprites}

@@ -15,6 +15,8 @@ export const currentFrameIndex = Lens.from<State>().prop(
   "currentFrame"
 );
 
+export const activeColor = Lens.from<State>().prop("activeColor");
+
 export const activeSprite = Lens.of<State, M.Sprite>({
   get(state) {
     return activeAnimation.get(state).sprites[currentFrameIndex.get(state)];
