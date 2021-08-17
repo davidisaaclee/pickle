@@ -32,6 +32,7 @@ interface Props {
   redo: () => void;
   addBlankAnimationFrame: () => void;
   setPlayhead: (index: number) => void;
+  currentFrameIndex: number;
 }
 
 export default function Editor({
@@ -46,6 +47,7 @@ export default function Editor({
   redo,
   addBlankAnimationFrame,
   setPlayhead,
+  currentFrameIndex,
 }: Props) {
   const [interactionMode, setInteractionMode] = React.useState<
     "cursor" | "direct"
@@ -187,16 +189,13 @@ export default function Editor({
     [locationFromClientPosition, paintPixels, moveCursor, interactionMode]
   );
 
-  const bindDrag = Gesture.useDrag(
-    (state) => {
-      if (state.first) {
-        onArtboardPanStart(state);
-      } else {
-        onArtboardPan(state);
-      }
-    },
-    { triggerAllEvents: true }
-  );
+  const bindDrag = Gesture.useDrag((state) => {
+    if (state.first) {
+      onArtboardPanStart(state);
+    } else {
+      onArtboardPan(state);
+    }
+  });
 
   return (
     <div className={classNames(styles.container)}>
@@ -248,6 +247,14 @@ export default function Editor({
         }}
       />
       <Palette className={styles.palette} onSelectColor={setActiveColor} />
+      <Timeline
+        className={styles.timeline}
+        sprites={animation.sprites}
+        selectedFrameIndex={currentFrameIndex}
+        onSelectFrame={(index) => {
+          setPlayhead(index);
+        }}
+      />
       {interactionMode === "cursor" && (
         <div
           className={styles.cursorButton}
@@ -267,13 +274,6 @@ export default function Editor({
           Paint
         </div>
       )}
-      <Timeline
-        className={styles.timeline}
-        sprites={animation.sprites}
-        onSelectFrame={(index) => {
-          setPlayhead(index);
-        }}
-      />
     </div>
   );
 }

@@ -89,14 +89,14 @@ export const reducer = createReducer(initialState, (builder) => {
         state,
         clamp(frame, 0, selectors.activeAnimation(state).sprites.length)
       );
-    })
-    .addMatcher(
-      () => true,
-      (state, action) => {
-        console.log("Action:", action);
-        return state;
-      }
-    );
+    });
+  // .addMatcher(
+  //   () => true,
+  //   (state, action) => {
+  //     console.log("Action:", action);
+  //     return state;
+  //   }
+  // );
 });
 
 /*

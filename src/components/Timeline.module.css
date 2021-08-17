@@ -1,8 +1,38 @@
-.container {
+.scrollContainer {
+  overflow: scroll hidden;
+  padding: 20px;
+
   display: flex;
-  flex-flow: row;
+}
+
+.container {
+  height: 100%;
+  width: 100%;
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: flex-start;
+  padding-right: 80vw;
 }
 
 .frameButton {
+  display: inline;
   height: 100%;
+  outline: 1px solid black;
+  margin-left: 10px;
+
+  transition: 0.2s outline-width;
+}
+
+.frameButton:first-child {
+  margin-left: 0;
+}
+
+.selectedFrameButton {
+  outline-width: 3px;
+}
+
+.artboardPreview {
+  height: 100%;
+  background-color: white;
+  display: block;
 }

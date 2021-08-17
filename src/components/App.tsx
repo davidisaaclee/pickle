@@ -97,6 +97,7 @@ export default function App() {
           paintPixels,
           undo: () => dispatch(actions.undo()),
           redo: () => dispatch(actions.redo()),
+          currentFrameIndex: selectors.currentFrameIndex(state),
           addBlankAnimationFrame: () => {
             dispatch(actions.pushHistory());
             dispatch(actions.addBlankAnimationFrame());

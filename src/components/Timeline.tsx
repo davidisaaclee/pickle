@@ -8,6 +8,7 @@ import styles from "./Timeline.module.css";
 interface Props {
   sprites: M.Sprite[];
   onSelectFrame: (index: number) => void;
+  selectedFrameIndex: number;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -17,25 +18,32 @@ const identityMatrix = mat2d.create();
 export default function Timeline({
   sprites,
   onSelectFrame,
+  selectedFrameIndex,
   className,
   style,
 }: Props) {
   return (
-    <div className={classNames(styles.container, className)} style={style}>
-      {sprites.map((sprite, index) => (
-        <Button
-          className={styles.frameButton}
-          onClick={() => onSelectFrame(index)}
-        >
-          <Artboard
-            style={{
-              height: "100%",
-            }}
-            sprite={sprite}
-            transform={identityMatrix}
-          />
-        </Button>
-      ))}
+    <div
+      className={classNames(styles.scrollContainer, className)}
+      style={style}
+    >
+      <div className={styles.container}>
+        {sprites.map((sprite, index) => (
+          <Button
+            className={classNames(
+              styles.frameButton,
+              index === selectedFrameIndex && styles.selectedFrameButton
+            )}
+            onClick={() => onSelectFrame(index)}
+          >
+            <Artboard
+              className={styles.artboardPreview}
+              sprite={sprite}
+              transform={identityMatrix}
+            />
+          </Button>
+        ))}
+      </div>
     </div>
   );
 }

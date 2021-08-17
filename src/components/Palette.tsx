@@ -4,19 +4,27 @@ import * as M from "../model";
 import Button from "./Button";
 import styles from "./Palette.module.css";
 
-const presetPalette = [0x04021c, 0xd2186f, 0xe7bbb2, 0x108da1, 0x084738].map(
-  (h) => hexToRgba(h, 0xff)
-);
+const presetPalette = [
+  [0, 0, 0, 0xff],
+  [87, 87, 87, 0xff],
+  [173, 35, 35, 0xff],
+  [42, 75, 215, 0xff],
+  [29, 105, 20, 0xff],
+  [129, 74, 25, 0xff],
+  [129, 38, 192, 0xff],
+  [160, 160, 160, 0xff],
+  [129, 197, 122, 0xff],
+  [157, 175, 255, 0xff],
+  [41, 208, 208, 0xff],
+  [255, 146, 51, 0xff],
+  [255, 238, 51, 0xff],
+  [233, 222, 187, 0xff],
+  [255, 205, 243, 0xff],
+  [255, 255, 255, 0xff],
+] as Array<[number, number, number, number]>;
 
 const rgbaToCss = (rgba: [number, number, number, number]): string =>
   `rgba(${rgba.join(", ")})`;
-
-function hexToRgba(
-  hex: number,
-  alpha: number = 0xff
-): [number, number, number, number] {
-  return [(hex >> 16) & 0xff, (hex >> 8) & 0xff, (hex >> 0) & 0xff, alpha];
-}
 
 interface Props {
   onSelectColor?: (color: M.PixelContent) => void;

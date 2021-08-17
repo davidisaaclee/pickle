@@ -95,7 +95,7 @@ export const Sprite = {
       result.data.set(
         spr.imageData.data.subarray(
           sourceOffset,
-          (sourceOffset + targetWidth * 4) % spr.imageData.data.length
+          sourceOffset + targetWidth * 4
         ),
         targetOffset
       );
