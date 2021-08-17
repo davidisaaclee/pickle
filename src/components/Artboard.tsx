@@ -6,7 +6,7 @@ import styles from "./Artboard.module.css";
 
 interface Props {
   sprite: M.Sprite;
-  transform: ReadonlyMat2d;
+  transform?: ReadonlyMat2d;
   offset?: M.PixelVec2;
   contentDimensions?: M.PixelVec2;
   onLayout?: (boundingClientRect: DOMRect) => void;
@@ -18,11 +18,13 @@ interface Ref {
   getDataURI(): string | null;
 }
 
+const identityMatrix: ReadonlyMat2d = mat2d.create();
+
 export default React.memo(
   React.forwardRef<Ref, Props>(function Artboard(
     {
       sprite,
-      transform,
+      transform = identityMatrix,
       offset = [0, 0],
       contentDimensions = [16, 16],
       className,

@@ -15,24 +15,45 @@
 }
 
 .frameButton {
-  display: inline;
   height: 100%;
-  outline: 1px solid black;
+  position: relative;
   margin-left: 10px;
 
-  transition: 0.2s outline-width;
+  display: flex;
 }
 
 .frameButton:first-child {
   margin-left: 0;
 }
 
-.selectedFrameButton {
-  outline-width: 3px;
+.addFrameButton .label {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background-color: hsla(0, 0%, 100%, 50%);
 }
 
 .artboardPreview {
-  height: 100%;
+  align-self: center;
   background-color: white;
   display: block;
+
+  outline: 1px solid black;
+  transition: 0.1s outline-width;
+}
+
+.selectedArtboardPreview {
+  outline-width: 3px;
+}
+
+.addFrameButton .artboardPreview {
+  outline: 2px solid black;
+  filter: blur(3px);
+  opacity: 0.8;
+  outline: none;
+}
+.addFrameButton:hover .artboardPreview {
+  /* outline: 3px solid green; */
+  opacity: 1;
 }

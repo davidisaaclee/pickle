@@ -120,6 +120,10 @@ export default function App() {
             dispatch(actions.pushHistory());
             dispatch(actions.addBlankAnimationFrame());
           },
+          duplicateCurrentAnimationFrame: () => {
+            dispatch(actions.pushHistory());
+            dispatch(actions.duplicateCurrentAnimationFrame());
+          },
         }}
       />
       {/*

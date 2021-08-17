@@ -182,6 +182,12 @@ export const Animation = {
     animation.sprites.push(sprite);
     return sprite;
   },
+
+  appendDuplicateFrame(animation: Animation, frameIndex: number): Sprite {
+    const sprite = Sprite.deepClone(animation.sprites[frameIndex]);
+    animation.sprites.push(sprite);
+    return sprite;
+  },
 };
 
 export interface AnimationPlayback {

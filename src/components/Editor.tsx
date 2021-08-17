@@ -31,6 +31,7 @@ interface Props {
   undo: () => void;
   redo: () => void;
   addBlankAnimationFrame: () => void;
+  duplicateCurrentAnimationFrame: () => void;
   setPlayhead: (index: number) => void;
   currentFrameIndex: number;
 }
@@ -46,6 +47,7 @@ export default function Editor({
   undo,
   redo,
   addBlankAnimationFrame,
+  duplicateCurrentAnimationFrame,
   setPlayhead,
   currentFrameIndex,
 }: Props) {
@@ -253,6 +255,13 @@ export default function Editor({
         selectedFrameIndex={currentFrameIndex}
         onSelectFrame={(index) => {
           setPlayhead(index);
+        }}
+        onRequestAddFrame={({ duplicateSelected }) => {
+          if (duplicateSelected) {
+            duplicateCurrentAnimationFrame();
+          } else {
+            addBlankAnimationFrame();
+          }
         }}
       />
       {interactionMode === "cursor" && (
