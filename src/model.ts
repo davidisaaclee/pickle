@@ -163,11 +163,23 @@ export interface Animation {
   sprites: Sprite[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 export const Animation = {
   deepClone(animation: Animation): Animation {
     return {
       sprites: animation.sprites.map(Sprite.deepClone),
     };
+  },
+
+  appendEmptyFrame(animation: Animation): Sprite {
+    const sprite = Sprite.create({
+      size:
+        animation.sprites[0] == null
+          ? undefined
+          : Sprite.getSize(animation.sprites[0]),
+    });
+    animation.sprites.push(sprite);
+    return sprite;
   },
 };
 

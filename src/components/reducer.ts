@@ -1,3 +1,4 @@
+import { clamp } from "lodash";
 import { createReducer, createAction } from "@reduxjs/toolkit";
 import * as M from "../model";
 
@@ -31,14 +32,17 @@ export const actions = {
   setActiveColor: createAction<M.PixelContent>("setActiveColor"),
   undo: createAction("undo"),
   redo: createAction("redo"),
+  addBlankAnimationFrame: createAction("addBlankAnimationFrame"),
+  movePlayhead: createAction<number>("movePlayhead"),
 } as const;
 
 export const selectors = {
+  activeAnimation(state: State): M.Animation {
+    return state.history.frames[state.history.cursor];
+  },
   activeSprite(state: State): M.Sprite {
     const playback = state.playback;
-    return state.history.frames[state.history.cursor].sprites[
-      playback.currentFrame
-    ];
+    return selectors.activeAnimation(state).sprites[playback.currentFrame];
   },
 };
 
@@ -82,6 +86,21 @@ export const reducer = createReducer(initialState, (builder) => {
       );
 
       state.history.cursor += 1;
+    })
+    .addCase(actions.addBlankAnimationFrame, (state) => {
+      const sprite = M.Animation.appendEmptyFrame(
+        selectors.activeAnimation(state)
+      );
+      M.Sprite.setPixelsRGBA(sprite, [[1, 1]], [0, 0xff, 0xff, 0xff]);
+      state.playback.currentFrame += 1;
+    })
+    .addCase(actions.movePlayhead, (state, { payload: frame }) => {
+      console.log(frame);
+      state.playback.currentFrame = clamp(
+        frame,
+        0,
+        selectors.activeAnimation(state).sprites.length
+      );
     })
     .addMatcher(
       () => true,

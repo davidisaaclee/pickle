@@ -1,4 +1,3 @@
-import { noop } from "lodash";
 import * as React from "react";
 import classNames from "classnames";
 import {
@@ -6,11 +5,10 @@ import {
   useCustomCompareEffect,
 } from "use-custom-compare";
 import * as Gesture from "@use-gesture/react";
-import ReactHammer from "react-hammerjs";
-import * as Hammer from "hammerjs";
 import Artboard from "../components/Artboard";
 import Toolbar from "../components/Toolbar";
 import Palette from "../components/Palette";
+import Timeline from "../components/Timeline";
 import * as M from "../model";
 import styles from "./Editor.module.css";
 import { ReadonlyVec2, Vec2, mat2d, vec2 } from "../utility/gl-matrix";
@@ -22,6 +20,7 @@ interface Props {
   setActiveTool: (tool: M.Tool) => void;
   activeTool: M.Tool;
 
+  animation: M.Animation;
   activeSprite: M.Sprite;
 
   setActiveColor: (color: M.PixelContent) => void;
@@ -31,21 +30,26 @@ interface Props {
 
   undo: () => void;
   redo: () => void;
+  addBlankAnimationFrame: () => void;
+  setPlayhead: (index: number) => void;
 }
 
 export default function Editor({
   setActiveTool,
   activeTool,
   activeSprite,
+  animation,
   setActiveColor,
   beginPaint,
   paintPixels,
   undo,
   redo,
+  addBlankAnimationFrame,
+  setPlayhead,
 }: Props) {
   const [interactionMode, setInteractionMode] = React.useState<
     "cursor" | "direct"
-  >("cursor");
+  >("direct");
   const [isCursorPressed, setIsCursorPressed] = React.useState(false);
 
   const artboardRef = React.useRef<React.ElementRef<typeof Artboard>>(null);
@@ -198,13 +202,14 @@ export default function Editor({
     <div className={classNames(styles.container)}>
       <div {...bindDrag()} className={styles.artboardStage}>
         <div
-          className={classNames(styles.artboard)}
+          className={classNames(styles.artboardContainer)}
           style={{
             width: artboardClientSize[0],
             height: artboardClientSize[1],
           }}
         >
           <Artboard
+            className={styles.artboard}
             ref={artboardRef}
             sprite={activeSprite}
             transform={artboardClientTransform}
@@ -235,6 +240,8 @@ export default function Editor({
               return setInteractionMode((prev) =>
                 prev === "cursor" ? "direct" : "cursor"
               );
+            case "add-frame":
+              return addBlankAnimationFrame();
             default:
               return absurd(button);
           }
@@ -260,6 +267,13 @@ export default function Editor({
           Paint
         </div>
       )}
+      <Timeline
+        className={styles.timeline}
+        sprites={animation.sprites}
+        onSelectFrame={(index) => {
+          setPlayhead(index);
+        }}
+      />
     </div>
   );
 }

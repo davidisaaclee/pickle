@@ -88,14 +88,18 @@ export default function App() {
     <div style={{ position: "fixed", top: 0, left: 0, right: 0, bottom: 0 }}>
       <Editor
         {...{
+          animation: selectors.activeAnimation(state),
           setActiveTool: _setActiveTool,
           activeTool: state.activeTool,
           setActiveColor: _setActiveColor,
           activeSprite,
+          setPlayhead: (index) => dispatch(actions.movePlayhead(index)),
           beginPaint,
           paintPixels,
           undo: () => dispatch(actions.undo()),
           redo: () => dispatch(actions.redo()),
+          addBlankAnimationFrame: () =>
+            dispatch(actions.addBlankAnimationFrame()),
         }}
       />
       {/* <div */}

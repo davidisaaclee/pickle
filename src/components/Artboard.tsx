@@ -1,3 +1,4 @@
+import classNames from "classnames";
 import * as React from "react";
 import * as M from "../model";
 import { ReadonlyMat2d, mat2d, vec2 } from "../utility/gl-matrix";
@@ -9,6 +10,8 @@ interface Props {
   offset?: M.PixelVec2;
   contentDimensions?: M.PixelVec2;
   onLayout?: (boundingClientRect: DOMRect) => void;
+  className?: string;
+  style?: React.CSSProperties;
 }
 
 interface Ref {
@@ -17,7 +20,14 @@ interface Ref {
 
 export default React.memo(
   React.forwardRef<Ref, Props>(function Artboard(
-    { sprite, transform, offset = [0, 0], contentDimensions = [16, 16] },
+    {
+      sprite,
+      transform,
+      offset = [0, 0],
+      contentDimensions = [16, 16],
+      className,
+      style,
+    },
     forwardedRef
   ) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -54,7 +64,8 @@ export default React.memo(
         width={vec2.x(contentDimensions)}
         height={vec2.y(contentDimensions)}
         ref={canvasRef}
-        className={styles.canvas}
+        className={classNames(styles.canvas, className)}
+        style={style}
       />
     );
   })

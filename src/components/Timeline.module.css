@@ -1,0 +1,8 @@
+.container {
+  display: flex;
+  flex-flow: row;
+}
+
+.frameButton {
+  height: 100%;
+}
