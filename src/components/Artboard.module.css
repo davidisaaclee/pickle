@@ -1,3 +1,26 @@
 .canvas {
   image-rendering: crisp-edges;
+  background: linear-gradient(
+    45deg,
+    hsl(0, 0%, 86%),
+    hsl(0, 0%, 100%),
+    hsl(0, 0%, 86%),
+    hsl(0, 0%, 100%),
+    hsl(0, 0%, 86%),
+    hsl(0, 0%, 100%),
+    hsl(0, 0%, 86%),
+    hsl(0, 0%, 100%)
+  );
+  background-size: 400% 400%;
+
+  animation: shimmer 10s linear infinite;
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: 25% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
 }
