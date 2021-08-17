@@ -3,7 +3,6 @@ import * as M from "../model";
 import { vec2 } from "../utility/gl-matrix";
 import Editor from "./Editor";
 import { reducer, initialState, selectors, actions } from "./reducer";
-import arrayEquals from "../utility/arrayEquals";
 
 interface ConsoleOverride<T> {
   log: (...args: any[]) => T;
@@ -98,25 +97,29 @@ export default function App() {
           paintPixels,
           undo: () => dispatch(actions.undo()),
           redo: () => dispatch(actions.redo()),
-          addBlankAnimationFrame: () =>
-            dispatch(actions.addBlankAnimationFrame()),
+          addBlankAnimationFrame: () => {
+            dispatch(actions.pushHistory());
+            dispatch(actions.addBlankAnimationFrame());
+          },
         }}
       />
-      {/* <div */}
-      {/*   style={{ */}
-      {/*     position: "fixed", */}
-      {/*     top: 0, */}
-      {/*     left: 0, */}
-      {/*     right: 0, */}
-      {/*     height: 100, */}
-      {/*     overflowY: "scroll", */}
-      {/*     backgroundColor: "rgba(255, 255, 255, 0.8)", */}
-      {/*   }} */}
-      {/* > */}
-      {/*   {log.map((l) => ( */}
-      {/*     <code style={{ display: "block" }}>{l}</code> */}
-      {/*   ))} */}
-      {/* </div> */}
+      {/*
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 100,
+          overflowY: "scroll",
+          backgroundColor: "rgba(255, 255, 255, 0.8)",
+        }}
+      >
+        {log.map((l) => (
+          <code style={{ display: "block" }}>{l}</code>
+        ))}
+      </div>
+        */}
     </div>
   );
 }

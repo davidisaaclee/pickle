@@ -1,23 +1,18 @@
 import { clamp } from "lodash";
 import { createReducer, createAction } from "@reduxjs/toolkit";
 import * as M from "../model";
-
-interface State {
-  history: {
-    frames: Array<M.Animation>;
-    cursor: number;
-  };
-  playback: M.AnimationPlayback;
-  activeTool: M.Tool;
-  activeColor: M.PixelContent;
-}
+import { State } from "./state";
+import * as L from "./lenses";
 
 export const initialState: State = {
   history: {
-    frames: [{ sprites: [M.Sprite.create()] }],
-    cursor: 0,
+    past: [],
+    present: {
+      animation: { sprites: [M.Sprite.create()] },
+      playback: { currentFrame: 0, isPlaying: false },
+    },
+    future: [],
   },
-  playback: { currentFrame: 0, isPlaying: false },
   activeTool: "pen",
   activeColor: [255, 0, 0, 255],
 };
@@ -37,25 +32,28 @@ export const actions = {
 } as const;
 
 export const selectors = {
-  activeAnimation(state: State): M.Animation {
-    return state.history.frames[state.history.cursor];
-  },
-  activeSprite(state: State): M.Sprite {
-    const playback = state.playback;
-    return selectors.activeAnimation(state).sprites[playback.currentFrame];
-  },
+  activeAnimation: L.activeAnimation.get,
+  currentFrameIndex: L.currentFrameIndex.get,
+  activeSprite: L.activeSprite.get,
 };
 
 export const reducer = createReducer(initialState, (builder) => {
   builder
     .addCase(actions.undo, (state) => {
-      state.history.cursor = Math.max(0, state.history.cursor - 1);
+      const nextPresent = state.history.past.pop();
+      if (nextPresent == null) {
+        return;
+      }
+      state.history.future.unshift(state.history.present);
+      state.history.present = nextPresent;
     })
     .addCase(actions.redo, (state) => {
-      state.history.cursor = Math.min(
-        state.history.frames.length - 1,
-        state.history.cursor + 1
-      );
+      const nextPresent = state.history.future.shift();
+      if (nextPresent == null) {
+        return;
+      }
+      state.history.past.push(state.history.present);
+      state.history.present = nextPresent;
     })
     .addCase(
       actions.paintPixels,
@@ -72,34 +70,24 @@ export const reducer = createReducer(initialState, (builder) => {
       state.activeColor = nextActiveColor;
     })
     .addCase(actions.pushHistory, (state) => {
-      if (state.history.cursor < state.history.frames.length - 1) {
-        state.history.frames.splice(
-          state.history.cursor + 1,
-          state.history.frames.length - state.history.cursor
-        );
-      }
-
-      state.history.frames.push(
-        M.Animation.deepClone(
-          state.history.frames[state.history.frames.length - 1]
-        )
-      );
-
-      state.history.cursor += 1;
+      state.history.future = [];
+      state.history.past.push(state.history.present);
+      state.history.present = {
+        ...state.history.present,
+        animation: M.Animation.deepClone(state.history.present.animation),
+      };
     })
     .addCase(actions.addBlankAnimationFrame, (state) => {
       const sprite = M.Animation.appendEmptyFrame(
         selectors.activeAnimation(state)
       );
       M.Sprite.setPixelsRGBA(sprite, [[1, 1]], [0, 0xff, 0xff, 0xff]);
-      state.playback.currentFrame += 1;
+      L.currentFrameIndex.update(state, (f) => f + 1);
     })
     .addCase(actions.movePlayhead, (state, { payload: frame }) => {
-      console.log(frame);
-      state.playback.currentFrame = clamp(
-        frame,
-        0,
-        selectors.activeAnimation(state).sprites.length
+      L.currentFrameIndex.set(
+        state,
+        clamp(frame, 0, selectors.activeAnimation(state).sprites.length)
       );
     })
     .addMatcher(
