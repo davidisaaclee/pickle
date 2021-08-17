@@ -185,7 +185,7 @@ export const Animation = {
 
   appendDuplicateFrame(animation: Animation, frameIndex: number): Sprite {
     const sprite = Sprite.deepClone(animation.sprites[frameIndex]);
-    animation.sprites.push(sprite);
+    animation.sprites.splice(frameIndex + 1, 0, sprite);
     return sprite;
   },
 };

@@ -1,17 +1,42 @@
-.scrollContainer {
-  overflow: scroll hidden;
-  padding: 20px;
+.container {
+  width: 100%;
+  height: 100%;
 
   display: flex;
 }
 
-.container {
+.scrollContainer {
+  /* width: 100%; */
+  /* height: 100%; */
+  overflow: scroll hidden;
+  padding: 10px;
+
+  display: flex;
+}
+
+.controlsContainer {
+  position: absolute;
+  display: flex;
+  flex-flow: column;
+  justify-content: space-around;
+
+  height: 100%;
+  width: 60px;
+  padding: 0 10px;
+  top: 50%;
+  left: 0;
+  transform: translate(0, -50%);
+  background-color: gray;
+}
+
+.frameContainer {
   height: 100%;
   width: 100%;
   display: flex;
   flex-flow: row nowrap;
   justify-content: flex-start;
   padding-right: 80vw;
+  padding-left: 80vw;
 }
 
 .frameButton {
@@ -24,14 +49,6 @@
 
 .frameButton:first-child {
   margin-left: 0;
-}
-
-.addFrameButton .label {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  background-color: hsla(0, 0%, 100%, 50%);
 }
 
 .artboardPreview {
@@ -49,11 +66,14 @@
 
 .addFrameButton .artboardPreview {
   outline: 2px solid black;
-  filter: blur(3px);
+  filter: blur(1px);
   opacity: 0.8;
   outline: none;
 }
 .addFrameButton:hover .artboardPreview {
   /* outline: 3px solid green; */
   opacity: 1;
+}
+.addFrameButton label {
+  color: white;
 }

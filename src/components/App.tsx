@@ -66,6 +66,7 @@ export default function App() {
     (artboardPos: readonly [number, number]) => {
       const loc = vec2.toTuple(vec2.floor(vec2.create(), artboardPos));
       if (state.activeTool === "bucket") {
+        dispatchRef.current(actions.pushHistory());
         dispatchRef.current(
           actions.paintBucket({
             location: loc,
