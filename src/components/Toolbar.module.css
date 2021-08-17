@@ -1,6 +1,6 @@
 .container {
   display: flex;
-  flex-flow: row;
+  flex-flow: column;
 
   color: white;
   padding: 5px;
