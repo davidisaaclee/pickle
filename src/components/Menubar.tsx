@@ -7,6 +7,7 @@ type MomentaryButton =
   | "redo"
   | "export"
   | "toggle-cursor"
+  | "cut-frame"
   | "copy-frame"
   | "paste-frame";
 
@@ -21,6 +22,12 @@ export default function Menubar({ onTapButton, className, style }: Props) {
     <div className={classNames(className, styles.container)} style={style}>
       <button className={styles.button} onClick={() => onTapButton("export")}>
         Export
+      </button>
+      <button
+        className={styles.button}
+        onClick={() => onTapButton("cut-frame")}
+      >
+        Cut frame
       </button>
       <button
         className={styles.button}

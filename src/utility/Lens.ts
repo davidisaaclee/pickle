@@ -1,4 +1,4 @@
-interface Lens<Base, Focus> {
+export interface Lens<Base, Focus> {
   get(b: Base): Focus;
   set(b: Base, v: Focus): Base;
   update(base: Base, update: (f: Focus) => Focus): Base;

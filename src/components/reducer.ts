@@ -32,12 +32,14 @@ export const actions = {
   setActiveColor: createAction<M.PixelContent>("setActiveColor"),
   undo: createAction("undo"),
   redo: createAction("redo"),
+  deleteActiveSprite: createAction("deleteActiveSprite"),
   addBlankAnimationFrame: createAction("addBlankAnimationFrame"),
   duplicateCurrentAnimationFrame: createAction(
     "duplicateCurrentAnimationFrame"
   ),
   movePlayhead: createAction<number>("movePlayhead"),
-  overlaySprite: createAction<M.Sprite>("overlaySprite"),
+  copyFrame: createAction("copyFrame"),
+  pasteFrame: createAction("pasteFrame"),
 } as const;
 
 export const selectors = {
@@ -162,12 +164,42 @@ export const reducer = createReducer(initialState, (builder) => {
         M.Sprite.updateEditHash(sprite);
       }
     )
-    .addCase(actions.overlaySprite, (state, { payload: spriteToOverlay }) => {
-      L.activeSprite.update(state, (sprite) => {
-        M.Sprite.overlaySprite(sprite, { spriteToOverlay });
-        M.Sprite.updateEditHash(sprite);
-        return sprite;
+    .addCase(actions.copyFrame, (state) => {
+      localStorage.setItem(
+        "pasteboard",
+        M.Sprite.serialize(L.activeSprite.get(state))
+      );
+      return state;
+    })
+    .addCase(actions.pasteFrame, (state) => {
+      const pasted = localStorage.getItem("pasteboard");
+      if (pasted == null) {
+        return;
+      }
+      const spriteToOverlay = M.Sprite.deserialize(pasted);
+
+      L.activeAnimation.update(state, (animation) => {
+        const insertIndex = L.currentFrameIndex.get(state) + 1;
+        M.Animation.insertEmptyFrame(animation, insertIndex);
+        M.Animation.frameLens(insertIndex).update(animation, (frame) => {
+          M.Sprite.overlaySprite(frame, { spriteToOverlay });
+          return frame;
+        });
+        return animation;
       });
+
+      L.currentFrameIndex.update(state, (f) => f + 1);
+    })
+    .addCase(actions.deleteActiveSprite, (state) => {
+      if (L.activeAnimation.get(state).sprites.length <= 1) {
+        return;
+      }
+
+      L.activeAnimation.update(state, (anim) => {
+        anim.sprites.splice(L.currentFrameIndex.get(state), 1);
+        return anim;
+      });
+      L.currentFrameIndex.update(state, (f) => Math.max(0, f - 1));
     })
     .addCase(actions.movePlayhead, (state, { payload: frame }) => {
       L.currentFrameIndex.set(

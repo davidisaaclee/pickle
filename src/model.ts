@@ -1,5 +1,6 @@
 import { inRange, range } from "lodash";
 import { v4 as uuid } from "uuid";
+import { Lens } from "./utility/Lens";
 import { vec2 } from "./utility/gl-matrix";
 import * as ImageDataUtils from "./utility/ImageData";
 
@@ -241,13 +242,21 @@ export const Animation = {
   },
 
   appendEmptyFrame(animation: Animation): Sprite {
+    return Animation.insertEmptyFrame(animation, animation.sprites.length);
+  },
+
+  insertEmptyFrame(animation: Animation, index: number): Sprite {
+    if (index < 0 || index > animation.sprites.length) {
+      throw new Error();
+    }
+
     const sprite = Sprite.create({
       size:
         animation.sprites[0] == null
           ? undefined
           : Sprite.getSize(animation.sprites[0]),
     });
-    animation.sprites.push(sprite);
+    animation.sprites.splice(index, 0, sprite);
     return sprite;
   },
 
@@ -255,6 +264,10 @@ export const Animation = {
     const sprite = Sprite.deepClone(animation.sprites[frameIndex]);
     animation.sprites.splice(frameIndex + 1, 0, sprite);
     return sprite;
+  },
+
+  frameLens(frameIndex: number): Lens<Animation, Sprite> {
+    return Lens.from<Animation>().prop("sprites", frameIndex);
   },
 };
 

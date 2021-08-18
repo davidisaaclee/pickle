@@ -126,19 +126,17 @@ export default function App() {
             dispatch(actions.pushHistory());
             dispatch(actions.duplicateCurrentAnimationFrame());
           },
+          cutFrame: () => {
+            dispatchRef.current(actions.copyFrame());
+            dispatchRef.current(actions.pushHistory());
+            dispatchRef.current(actions.deleteActiveSprite());
+          },
           copyFrame: () => {
-            localStorage.setItem(
-              "pasteboard",
-              M.Sprite.serialize(activeSprite)
-            );
+            dispatchRef.current(actions.copyFrame());
           },
           pasteFrame: async () => {
-            const pasted = localStorage.getItem("pasteboard");
-            if (pasted == null) {
-              return;
-            }
-
-            dispatch(actions.overlaySprite(M.Sprite.deserialize(pasted)));
+            dispatchRef.current(actions.pushHistory());
+            dispatchRef.current(actions.pasteFrame());
           },
         }}
       />

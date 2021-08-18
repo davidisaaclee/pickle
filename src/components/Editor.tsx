@@ -37,6 +37,7 @@ interface Props {
   duplicateCurrentAnimationFrame: () => void;
   setPlayhead: (index: number) => void;
   currentFrameIndex: number;
+  cutFrame: () => void;
   copyFrame: () => void;
   pasteFrame: () => void;
 }
@@ -52,6 +53,7 @@ export default function Editor({
   paintPixels,
   undo,
   redo,
+  cutFrame,
   addBlankAnimationFrame,
   duplicateCurrentAnimationFrame,
   setPlayhead,
@@ -255,6 +257,8 @@ export default function Editor({
               return setInteractionMode((prev) =>
                 prev === "cursor" ? "direct" : "cursor"
               );
+            case "cut-frame":
+              return cutFrame();
             case "copy-frame":
               return copyFrame();
             case "paste-frame":
