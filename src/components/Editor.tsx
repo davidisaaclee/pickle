@@ -10,6 +10,7 @@ import Toolbar from "../components/Toolbar";
 import Menubar from "../components/Menubar";
 import Palette from "../components/Palette";
 import Timeline from "../components/Timeline";
+import CursorModeButtons from "../components/CursorModeButtons";
 import * as M from "../model";
 import styles from "./Editor.module.css";
 import { ReadonlyVec2, Vec2, mat2d, vec2 } from "../utility/gl-matrix";
@@ -286,23 +287,15 @@ export default function Editor({
         }}
       />
       {interactionMode === "cursor" && (
-        <div
-          className={styles.cursorButton}
-          data-pressed={isCursorPressed}
-          onPointerDown={(event) => {
-            event.currentTarget.setPointerCapture(event.pointerId);
-            event.stopPropagation();
-            setIsCursorPressed(true);
-            beginPaint(cursorPosition);
+        <CursorModeButtons
+          className={styles.cursorModeButtons}
+          onButtonChanged={(isDown) => {
+            setIsCursorPressed(isDown);
+            if (isDown) {
+              beginPaint(cursorPosition);
+            }
           }}
-          onPointerUp={(event) => {
-            event.currentTarget.releasePointerCapture(event.pointerId);
-            event.stopPropagation();
-            setIsCursorPressed(false);
-          }}
-        >
-          Paint
-        </div>
+        />
       )}
     </div>
   );

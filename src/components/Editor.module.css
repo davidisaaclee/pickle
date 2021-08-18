@@ -61,30 +61,6 @@
   transform: translate(-50%, -50%);
 }
 
-.cursorButton {
-  position: absolute;
-  right: 20px;
-  bottom: 20px;
-
-  width: 80px;
-  height: 80px;
-  border-radius: 40px;
-  box-shadow: 1px 1px 8px hsla(0, 0%, 0%, 30%);
-  border: 1px solid black;
-
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background-color: white;
-  user-select: none;
-  touch-action: none;
-}
-
-.cursorButton[data-pressed="true"] {
-  box-shadow: 0px 0px 0px hsla(0, 0%, 0%, 30%);
-  background-color: gray;
-}
-
 .timeline {
   position: absolute;
   bottom: 0;
@@ -92,4 +68,10 @@
   right: 0;
   background-color: darkgray;
   height: 80px;
+}
+
+.cursorModeButtons {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
 }
