@@ -47,6 +47,10 @@
   display: flex;
 }
 
+.frameButton.prerollOrPostroll {
+  opacity: 0.5;
+}
+
 .frameButton:first-child {
   margin-left: 0;
 }
@@ -60,6 +64,9 @@
   transition: 0.1s outline-width;
 }
 
+.frameButton.prerollOrPostroll .selectedArtboardPreview {
+  outline-width: 1px;
+}
 .selectedArtboardPreview {
   outline-width: 3px;
 }

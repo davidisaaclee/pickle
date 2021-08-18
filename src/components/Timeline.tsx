@@ -18,6 +18,8 @@ interface Props {
 
 const SCROLL_SELECTION_LEADING_MARGIN = 0;
 
+const ENABLE_GHOSTS = false;
+
 export default function Timeline({
   sprites,
   onSelectFrame,
@@ -75,20 +77,15 @@ export default function Timeline({
             Math.abs((boundsB.left + boundsB.right) * 0.5 - containerCenterX)
           );
         });
-      // sort by x position (leftmost first)
-      // .sort(
-      //   ([_idxA, _frameA, boundsA], [_idxB, _frameB, boundsB]) =>
-      //     boundsA.left - boundsB.left
-      // );
 
       const match = nextSelectionMatches[0];
       if (match == null) {
         return null;
       }
       const [matchIndex] = match;
-      return matchIndex;
+      return matchIndex % sprites.length;
     },
-    []
+    [sprites]
   );
 
   return (
@@ -105,27 +102,39 @@ export default function Timeline({
         }}
       >
         <div ref={observe} className={styles.frameContainer}>
-          {sprites.map((sprite, index) => (
-            <Button
-              ref={(elm) => {
-                frameRefs.current[index] = elm;
-              }}
-              className={classNames(styles.frameButton)}
-              onClick={() => onSelectFrame(index)}
-            >
-              <Artboard
-                className={classNames(
-                  styles.artboardPreview,
-                  index === selectedFrameIndex && styles.selectedArtboardPreview
-                )}
-                style={{
-                  width: framePreviewHeight,
-                  height: framePreviewHeight,
-                }}
-                sprite={sprite}
-              />
-            </Button>
-          ))}
+          {(ENABLE_GHOSTS ? [...sprites, ...sprites, ...sprites] : sprites).map(
+            (sprite, index) => {
+              const spriteIndex = index % sprites.length;
+              const isPrerollOrPostrollInstance =
+                (ENABLE_GHOSTS && index < sprites.length) ||
+                index >= sprites.length * 2;
+              return (
+                <Button
+                  ref={(elm) => {
+                    frameRefs.current[index] = elm;
+                  }}
+                  className={classNames(
+                    styles.frameButton,
+                    isPrerollOrPostrollInstance && styles.prerollOrPostroll
+                  )}
+                  onClick={() => onSelectFrame(spriteIndex)}
+                >
+                  <Artboard
+                    className={classNames(
+                      styles.artboardPreview,
+                      spriteIndex === selectedFrameIndex &&
+                        styles.selectedArtboardPreview
+                    )}
+                    style={{
+                      width: framePreviewHeight,
+                      height: framePreviewHeight,
+                    }}
+                    sprite={sprite}
+                  />
+                </Button>
+              );
+            }
+          )}
         </div>
       </div>
       <div className={styles.controlsContainer}>
@@ -141,30 +150,6 @@ export default function Timeline({
         >
           <label className={styles.label}>add new frame</label>
         </Button>
-        {/*
-        <Button
-          className={classNames(styles.frameButton, styles.addFrameButton)}
-          onClick={() => onRequestAddFrame({ duplicateSelected: true })}
-        >
-          <Artboard
-            className={styles.artboardPreview}
-            style={{ width: framePreviewHeight, height: framePreviewHeight }}
-            sprite={sprites[selectedFrameIndex]}
-          />
-          <label className={styles.label}>duplicate selected frame</label>
-        </Button>
-        <Button
-          className={classNames(styles.frameButton, styles.addFrameButton)}
-          onClick={() => onRequestAddFrame({ duplicateSelected: false })}
-        >
-          <Artboard
-            className={styles.artboardPreview}
-            style={{ width: framePreviewHeight, height: framePreviewHeight }}
-            sprite={emptySprite}
-          />
-          <label className={styles.label}>add empty frame</label>
-        </Button>
-          */}
       </div>
     </div>
   );
