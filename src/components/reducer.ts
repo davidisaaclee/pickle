@@ -1,4 +1,4 @@
-import { inRange, clamp } from "lodash";
+import { clamp } from "lodash";
 import { createReducer, createAction } from "@reduxjs/toolkit";
 import arrayEquals from "../utility/arrayEquals";
 import * as M from "../model";
@@ -107,22 +107,21 @@ export const reducer = createReducer(initialState, (builder) => {
     .addCase(
       actions.paintBucket,
       (state, { payload: { location, content } }) => {
-        let count = 0;
-        const queue: Array<readonly [number, number]> = [location];
-        const checked: Record<string, boolean> = {};
-
         const hashLocation = (loc: readonly [number, number]) => loc.join(", ");
 
         const sprite = selectors.activeSprite(state);
-        const [spriteWidth, spriteHeight] = M.Sprite.getSize(sprite);
+        if (!M.Sprite.isPointInside(sprite, location)) {
+          return;
+        }
 
         const matchColor = M.Sprite.getPixel(sprite, location);
+        const isInside = (point: readonly [number, number]) =>
+          M.Sprite.isPointInside(sprite, point) &&
+          arrayEquals(M.Sprite.getPixel(sprite, point), matchColor);
 
-        const isInside = ([x, y]: readonly [number, number]) =>
-          inRange(x, 0, spriteWidth) &&
-          inRange(y, 0, spriteHeight) &&
-          arrayEquals(M.Sprite.getPixel(sprite, [x, y]), matchColor);
-
+        let count = 0;
+        const queue: Array<readonly [number, number]> = [location];
+        const checked: Record<string, boolean> = {};
         while (queue.length > 0) {
           count++;
           if (count > 9999) {
