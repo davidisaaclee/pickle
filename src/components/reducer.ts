@@ -71,9 +71,11 @@ export const reducer = createReducer(initialState, (builder) => {
     .addCase(
       actions.paintPixels,
       (state, { payload: { locations, content } }) => {
-        const activeSprite = selectors.activeSprite(state);
-        M.Sprite.setPixelsRGBA(activeSprite, locations, content);
-        M.Sprite.updateEditHash(activeSprite);
+        L.activeSprite.update(state, (activeSprite) => {
+          M.Sprite.setPixelsRGBA(activeSprite, locations, content);
+          M.Sprite.updateEditHash(activeSprite);
+          return activeSprite;
+        });
       }
     )
     .addCase(actions.setActiveTool, (state, { payload: nextActiveTool }) => {

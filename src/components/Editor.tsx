@@ -173,34 +173,86 @@ export default function Editor({
     [convertClientPositionToArtboard]
   );
 
+  const artboardContainerRef = React.useRef<React.ElementRef<"div">>(null);
+  const panGestureTargetRef = React.useRef<React.ElementRef<"div">>(null);
+
+  const artboardLocationFromPanGestureLocation = React.useCallback(
+    (gestureLocation: readonly [number, number]) => {
+      const artboardContainer = artboardContainerRef.current;
+      const panGestureTarget = panGestureTargetRef.current;
+      if (artboardContainer == null || panGestureTarget == null) {
+        return null;
+      }
+      const artboardOffsetFromGestureTarget = (() => {
+        const out = vec2.fromLeftTop(artboardContainer.getBoundingClientRect());
+        vec2.sub(
+          out,
+          out,
+          vec2.fromLeftTop(panGestureTarget.getBoundingClientRect())
+        );
+        return out;
+      })();
+      const clientPositionInArtboard = vec2.sub(
+        vec2.create(),
+        gestureLocation,
+        artboardOffsetFromGestureTarget
+      );
+      return locationFromClientPosition(clientPositionInArtboard);
+    },
+    []
+  );
+
   const onArtboardPanStart = React.useCallback(
     (gestureState: PanEvent) => {
       bcrRef.current = gestureState.currentTarget.getBoundingClientRect();
       const pt = locationFromClientPosition(gestureState.xy);
       if (interactionMode === "direct") {
-        beginPaint(pt);
+        const artboardLocation = artboardLocationFromPanGestureLocation(
+          gestureState.xy
+        );
+        if (artboardLocation != null) {
+          setCursorPosition(artboardLocation);
+        }
+        setPrimaryButtonPressed(true);
       }
       prevPositionRef.current = pt;
     },
-    [locationFromClientPosition, beginPaint, interactionMode]
+    [
+      locationFromClientPosition,
+      beginPaint,
+      interactionMode,
+      setPrimaryButtonPressed,
+    ]
   );
 
   const onArtboardPan = React.useCallback(
     (gestureState: PanEvent) => {
-      const pt = locationFromClientPosition(gestureState.xy);
+      // kinda complicated: trying to avoid doing this transform on every
+      // gesture - only doing it on direct interactions. that means that
+      // `scaledPointInGestureTarget` and `previousPositionRef` will be scaled
+      // to artboard units, but will be relative to the origin of the "artboard
+      // stage".
+      const scaledPointInGestureTarget = locationFromClientPosition(
+        gestureState.xy
+      );
       if (interactionMode === "direct") {
-        paintPixels(pt);
+        const artboardLocation = artboardLocationFromPanGestureLocation(
+          gestureState.xy
+        );
+        if (artboardLocation != null) {
+          setCursorPosition(artboardLocation);
+        }
       } else {
         const delta =
           prevPositionRef.current == null
             ? null
             : ([
-                pt[0] - prevPositionRef.current[0],
-                pt[1] - prevPositionRef.current[1],
+                scaledPointInGestureTarget[0] - prevPositionRef.current[0],
+                scaledPointInGestureTarget[1] - prevPositionRef.current[1],
               ] as [number, number]);
-        moveCursor(pt, delta);
+        moveCursor(scaledPointInGestureTarget, delta);
       }
-      prevPositionRef.current = pt;
+      prevPositionRef.current = scaledPointInGestureTarget;
     },
     [locationFromClientPosition, paintPixels, moveCursor, interactionMode]
   );
@@ -208,7 +260,11 @@ export default function Editor({
   const { bind: bindDrag } = usePan({
     onPanStart: onArtboardPanStart,
     onPanMove: onArtboardPan,
-    onPanEnd: () => {},
+    onPanEnd: () => {
+      if (interactionMode === "direct") {
+        setPrimaryButtonPressed(false);
+      }
+    },
   });
 
   const globalKeyDownHandler = React.useCallback(
@@ -241,8 +297,13 @@ export default function Editor({
 
   return (
     <div className={classNames(styles.container)}>
-      <div className={styles.artboardStage} {...bindDrag()}>
+      <div
+        ref={panGestureTargetRef}
+        className={styles.artboardStage}
+        {...bindDrag()}
+      >
         <div
+          ref={artboardContainerRef}
           className={classNames(styles.artboardContainer)}
           style={{
             width: artboardClientSize[0],
