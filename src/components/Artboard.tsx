@@ -20,6 +20,8 @@ interface Ref {
 
 const identityMatrix: ReadonlyMat2d = mat2d.create();
 
+const matbuffer = mat2d.create();
+
 export default React.memo(
   React.forwardRef<Ref, Props>(function Artboard(
     {
@@ -45,8 +47,8 @@ export default React.memo(
         vec2.x(M.Sprite.getSize(sprite)),
         vec2.y(M.Sprite.getSize(sprite))
       );
-      const minv = mat2d.invert(mat2d.create(), transform);
-      const m = mat2d.toComponents(minv);
+      mat2d.invert(matbuffer, transform);
+      const m = mat2d.toComponents(matbuffer);
       ctx.setTransform(m.a, m.b, m.c, m.d, m.tx, m.ty);
       ctx.putImageData(
         M.Sprite.makeImageDataForSlice(sprite, offset, contentDimensions),
