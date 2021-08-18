@@ -147,7 +147,8 @@ export default function Editor({
     },
     [cursorPixelPosition, isCursorPressed, paintPixels],
     ([prevPos, ...prevDeps], [nextPos, ...nextDeps]) =>
-      arrayEquals(prevPos, nextPos) && arrayEquals(prevDeps, nextDeps)
+      arrayEquals(prevPos.map(Math.floor), nextPos.map(Math.floor)) &&
+      arrayEquals(prevDeps, nextDeps)
   );
 
   const bcrRef = React.useRef<DOMRect>(new DOMRect());
