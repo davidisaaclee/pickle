@@ -67,7 +67,8 @@ export default function Editor({
   const [interactionMode, setInteractionMode] = React.useState<
     "cursor" | "direct"
   >("direct");
-  const [isCursorPressed, setIsCursorPressed] = React.useState(false);
+  const [isPrimaryButtonPressed, setPrimaryButtonPressed] =
+    React.useState(false);
 
   const artboardRef = React.useRef<React.ElementRef<typeof Artboard>>(null);
 
@@ -141,11 +142,11 @@ export default function Editor({
   ];
   useCustomCompareEffect(
     () => {
-      if (isCursorPressed) {
+      if (isPrimaryButtonPressed) {
         paintPixels(cursorPixelPosition);
       }
     },
-    [cursorPixelPosition, isCursorPressed, paintPixels],
+    [cursorPixelPosition, isPrimaryButtonPressed, paintPixels],
     ([prevPos, ...prevDeps], [nextPos, ...nextDeps]) =>
       arrayEquals(prevPos, nextPos) && arrayEquals(prevDeps, nextDeps)
   );
@@ -212,20 +213,20 @@ export default function Editor({
 
   const globalKeyDownHandler = React.useCallback(
     (event: KeyboardEvent) => {
-      if (event.key === "x" && !isCursorPressed) {
+      if (event.key === "x" && !isPrimaryButtonPressed) {
         console.log("set pressed");
-        setIsCursorPressed(true);
+        setPrimaryButtonPressed(true);
       }
     },
-    [setIsCursorPressed, isCursorPressed]
+    [setPrimaryButtonPressed, isPrimaryButtonPressed]
   );
   const globalKeyUpHandler = React.useCallback(
     (event: KeyboardEvent) => {
       if (event.key === "x") {
-        setIsCursorPressed(false);
+        setPrimaryButtonPressed(false);
       }
     },
-    [setIsCursorPressed]
+    [setPrimaryButtonPressed]
   );
 
   React.useEffect(() => {
@@ -318,7 +319,7 @@ export default function Editor({
           onButtonChanged={(isDown, buttonType) => {
             switch (buttonType) {
               case "paint":
-                setIsCursorPressed(isDown);
+                setPrimaryButtonPressed(isDown);
                 if (isDown) {
                   beginPaint(cursorPosition);
                 }
