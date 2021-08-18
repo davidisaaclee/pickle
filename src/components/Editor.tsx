@@ -215,6 +215,33 @@ export default function Editor({
     }
   });
 
+  const globalKeyDownHandler = React.useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === "x" && !isCursorPressed) {
+        console.log("set pressed");
+        setIsCursorPressed(true);
+      }
+    },
+    [setIsCursorPressed, isCursorPressed]
+  );
+  const globalKeyUpHandler = React.useCallback(
+    (event: KeyboardEvent) => {
+      if (event.key === "x") {
+        setIsCursorPressed(false);
+      }
+    },
+    [setIsCursorPressed]
+  );
+
+  React.useEffect(() => {
+    window.addEventListener("keydown", globalKeyDownHandler);
+    window.addEventListener("keyup", globalKeyUpHandler);
+
+    return () => {
+      window.removeEventListener("keydown", globalKeyDownHandler);
+      window.removeEventListener("keyup", globalKeyUpHandler);
+    };
+  }, [globalKeyDownHandler, globalKeyUpHandler]);
   return (
     <div className={classNames(styles.container)}>
       <div {...bindDrag()} className={styles.artboardStage}>
