@@ -120,6 +120,8 @@ export default function App() {
           setPlayhead: (index) => dispatch(actions.movePlayhead(index)),
           beginPaint,
           paintPixels,
+          translateSprite: (offset) =>
+            dispatchRef.current(actions.translateSprite({ offset })),
           undo: () => dispatch(actions.undo()),
           redo: () => dispatch(actions.redo()),
           currentFrameIndex: selectors.currentFrameIndex(state),

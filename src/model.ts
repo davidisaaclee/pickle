@@ -194,6 +194,41 @@ export const Sprite = {
     }
   },
 
+  translatePixels(sprite: Sprite, [offsetX, offsetY]: ReadonlyPixelVec2): void {
+    const [spriteWidth] = Sprite.getSize(sprite);
+
+    // we need to rotate the buffer by this amount (if arrayOffset == 4, then
+    // `outputBuffer[7] == inputBuffer[3]`)
+    const arrayOffset = (offsetY * spriteWidth + offsetX) * 4;
+
+    if (arrayOffset === 0) {
+      // no need to rotate
+      return;
+    }
+
+    // Rotate image data buffer by `arrayOffset`:
+    const splitIndex =
+      arrayOffset < 0
+        ? -arrayOffset
+        : sprite.imageData.data.length - arrayOffset;
+
+    // First, split existing data into two subarrays
+    const targetStartSubarray = sprite.imageData.data.subarray(
+      splitIndex,
+      sprite.imageData.data.length
+    );
+    const targetEndSubarray = sprite.imageData.data.subarray(0, splitIndex);
+
+    // TODO: choose the smaller array to copy to avoid unnecessary allocation
+
+    // Copy one of the arrays, since we'll need to overwrite part of its range
+    const targetEndCopy = targetEndSubarray.slice();
+
+    // finally, copy the slices back into the main buffer
+    sprite.imageData.data.set(targetStartSubarray);
+    sprite.imageData.data.set(targetEndCopy, targetStartSubarray.length);
+  },
+
   serialize(spr: Sprite): string {
     return JSON.stringify({
       size: [spr.imageData.width, spr.imageData.height],

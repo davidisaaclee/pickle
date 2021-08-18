@@ -27,6 +27,8 @@ export const actions = {
     createAction<{ locations: M.PixelLocation[]; content: M.PixelContent }>(
       "paintPixels"
     ),
+  translateSprite:
+    createAction<{ offset: M.ReadonlyPixelVec2 }>("translateSprite"),
   pickColorAtLocation: createAction<M.PixelLocation>("pickColorAtLocation"),
   pushHistory: createAction("pushHistory"),
   setActiveTool: createAction<M.Tool>("setActiveTool"),
@@ -78,6 +80,13 @@ export const reducer = createReducer(initialState, (builder) => {
         });
       }
     )
+    .addCase(actions.translateSprite, (state, { payload: { offset } }) => {
+      L.activeSprite.update(state, (sprite) => {
+        M.Sprite.translatePixels(sprite, offset);
+        M.Sprite.updateEditHash(sprite);
+        return sprite;
+      });
+    })
     .addCase(actions.setActiveTool, (state, { payload: nextActiveTool }) => {
       state.activeTool = nextActiveTool;
     })

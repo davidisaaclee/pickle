@@ -18,6 +18,7 @@ import arrayEquals from "../utility/arrayEquals";
 import absurd from "../utility/absurd";
 import { rgbaToCss } from "../utility/colors";
 import usePan, { PanEvent } from "../utility/usePan";
+import useOnChange from "../utility/useOnChange";
 
 const primaryButtons = {
   pen: { title: "Paint", key: "paint" },
@@ -42,6 +43,7 @@ interface Props {
 
   beginPaint: (artboardPos: readonly [number, number]) => void;
   paintPixels: (artboardPos: readonly [number, number]) => void;
+  translateSprite: (offset: readonly [number, number]) => void;
 
   undo: () => void;
   redo: () => void;
@@ -64,6 +66,7 @@ export default function Editor({
   setActiveColor,
   beginPaint,
   paintPixels,
+  translateSprite,
   undo,
   redo,
   cutFrame,
@@ -77,7 +80,7 @@ export default function Editor({
 }: Props) {
   const [interactionMode, setInteractionMode] = React.useState<
     "cursor" | "direct"
-  >("direct");
+  >("cursor");
   const [isPrimaryButtonPressed, setPrimaryButtonPressed] =
     React.useState(false);
   const [isSecondaryButtonPressed, setSecondaryButtonPressed] =
@@ -163,13 +166,30 @@ export default function Editor({
     ([prevPos, ...prevDeps], [nextPos, ...nextDeps]) =>
       arrayEquals(prevPos, nextPos) && arrayEquals(prevDeps, nextDeps)
   );
-  useCustomCompareEffect(
-    () => {
+  useOnChange(
+    ([[prevCursorX, prevCursorY]]) => {
       if (isSecondaryButtonPressed) {
-        pickColorAtLocation(cursorPixelPosition);
+        switch (activeTool) {
+          case "pen":
+            pickColorAtLocation(cursorPixelPosition);
+            break;
+          case "eraser":
+            pickColorAtLocation(cursorPixelPosition);
+            break;
+          case "bucket":
+            const [cursorX, cursorY] = cursorPixelPosition;
+            const offset = [
+              cursorX - prevCursorX,
+              cursorY - prevCursorY,
+            ] as const;
+            translateSprite(offset);
+            break;
+          default:
+            return absurd(activeTool);
+        }
       }
     },
-    [cursorPixelPosition, isSecondaryButtonPressed, pickColorAtLocation],
+    [cursorPixelPosition, isSecondaryButtonPressed],
     ([prevPos, ...prevDeps], [nextPos, ...nextDeps]) =>
       arrayEquals(prevPos, nextPos) && arrayEquals(prevDeps, nextDeps)
   );
@@ -293,8 +313,10 @@ export default function Editor({
   const globalKeyDownHandler = React.useCallback(
     (event: KeyboardEvent) => {
       if (event.key === "x" && !isPrimaryButtonPressed) {
-        console.log("set pressed");
         setPrimaryButtonPressed(true);
+      }
+      if (event.key === "c" && !isSecondaryButtonPressed) {
+        setSecondaryButtonPressed(true);
       }
     },
     [setPrimaryButtonPressed, isPrimaryButtonPressed]
@@ -303,6 +325,9 @@ export default function Editor({
     (event: KeyboardEvent) => {
       if (event.key === "x") {
         setPrimaryButtonPressed(false);
+      }
+      if (event.key === "c") {
+        setSecondaryButtonPressed(false);
       }
     },
     [setPrimaryButtonPressed]
