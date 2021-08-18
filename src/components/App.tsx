@@ -54,7 +54,12 @@ export default function App() {
           })
         );
       } else if (state.activeTool === "bucket") {
-        // Nothing
+        dispatchRef.current(
+          actions.paintBucket({
+            location: loc,
+            content: state.activeColor,
+          })
+        );
       } else {
         return absurd(state.activeTool);
       }
