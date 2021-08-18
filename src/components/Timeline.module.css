@@ -56,7 +56,7 @@
   background-color: white;
   display: block;
 
-  outline: 1px solid black;
+  outline: 0px solid black;
   transition: 0.1s outline-width;
 }
 
