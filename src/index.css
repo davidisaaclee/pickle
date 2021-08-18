@@ -9,3 +9,7 @@ html,
 #root {
   height: 100%;
 }
+
+body * {
+  user-select: none;
+}
