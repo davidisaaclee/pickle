@@ -4,7 +4,6 @@ import {
   useCustomCompareMemo,
   useCustomCompareEffect,
 } from "use-custom-compare";
-import * as Gesture from "@use-gesture/react";
 import Artboard from "../components/Artboard";
 import Toolbar from "../components/Toolbar";
 import Menubar from "../components/Menubar";
@@ -18,6 +17,7 @@ import { useValueFromInnerWindowSize } from "../utility/useWindowResize";
 import arrayEquals from "../utility/arrayEquals";
 import absurd from "../utility/absurd";
 import { rgbaToCss } from "../utility/colors";
+import usePan, { PanEvent } from "../utility/usePan";
 
 interface Props {
   setActiveTool: (tool: M.Tool) => void;
@@ -174,10 +174,8 @@ export default function Editor({
   );
 
   const onArtboardPanStart = React.useCallback(
-    (gestureState: Gesture.DragState) => {
-      if (gestureState.target instanceof HTMLElement) {
-        bcrRef.current = gestureState.target.getBoundingClientRect();
-      }
+    (gestureState: PanEvent) => {
+      bcrRef.current = gestureState.currentTarget.getBoundingClientRect();
       const pt = locationFromClientPosition(gestureState.xy);
       if (interactionMode === "direct") {
         beginPaint(pt);
@@ -188,7 +186,7 @@ export default function Editor({
   );
 
   const onArtboardPan = React.useCallback(
-    (gestureState: Gesture.DragState) => {
+    (gestureState: PanEvent) => {
       const pt = locationFromClientPosition(gestureState.xy);
       if (interactionMode === "direct") {
         paintPixels(pt);
@@ -207,12 +205,10 @@ export default function Editor({
     [locationFromClientPosition, paintPixels, moveCursor, interactionMode]
   );
 
-  const bindDrag = Gesture.useDrag((state) => {
-    if (state.first) {
-      onArtboardPanStart(state);
-    } else {
-      onArtboardPan(state);
-    }
+  const { bind: bindDrag } = usePan({
+    onPanStart: onArtboardPanStart,
+    onPanMove: onArtboardPan,
+    onPanEnd: () => {},
   });
 
   const globalKeyDownHandler = React.useCallback(
@@ -242,9 +238,10 @@ export default function Editor({
       window.removeEventListener("keyup", globalKeyUpHandler);
     };
   }, [globalKeyDownHandler, globalKeyUpHandler]);
+
   return (
     <div className={classNames(styles.container)}>
-      <div {...bindDrag()} className={styles.artboardStage}>
+      <div className={styles.artboardStage} {...bindDrag()}>
         <div
           className={classNames(styles.artboardContainer)}
           style={{
