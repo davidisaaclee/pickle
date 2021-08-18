@@ -31,12 +31,6 @@ export default function Menubar({ onTapButton, className, style }: Props) {
       </button>
       <button
         className={styles.button}
-        onClick={() => onTapButton("copy-frame")}
-      >
-        Copy frame
-      </button>
-      <button
-        className={styles.button}
         onClick={() => onTapButton("paste-frame")}
       >
         Paste frame
