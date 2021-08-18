@@ -21,6 +21,7 @@ export const Tool = {
   },
 };
 
+export type ReadonlyPixelVec2 = readonly [number, number];
 export type PixelVec2 = [number, number];
 export type PixelLocation = PixelVec2;
 
@@ -133,7 +134,7 @@ export const Sprite = {
     }
   },
 
-  getPixel(sprite: Sprite, pixelLocation: PixelLocation): PixelContent {
+  getPixel(sprite: Sprite, pixelLocation: ReadonlyPixelVec2): PixelContent {
     const spriteSize = Sprite.getSize(sprite);
     if (
       vec2.x(pixelLocation) < 0 ||
@@ -229,9 +230,9 @@ export const Sprite = {
     return out;
   },
 
-  isPointInside(sprite: Sprite, [x, y]: PixelVec2): boolean {
+  isPointInside(sprite: Sprite, [x, y]: ReadonlyPixelVec2): boolean {
     const [width, height] = Sprite.getSize(sprite);
-    return x >= 0 && x < width && y >= 0 && y < height;
+    return inRange(x, 0, width) && inRange(y, 0, height);
   },
 };
 
