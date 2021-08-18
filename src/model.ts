@@ -62,15 +62,8 @@ export const Sprite = {
   makeImageDataForSlice(
     spr: Sprite,
     [offsetX, offsetY]: PixelVec2,
-    [targetWidth, targetHeight]: PixelVec2,
-    out?: ImageData
+    [targetWidth, targetHeight]: PixelVec2
   ): ImageData {
-    if (out != null) {
-      if (out.height !== targetHeight || out.width !== targetWidth) {
-        throw new Error("Size mismatch");
-      }
-    }
-
     const [sourceWidth, sourceHeight] = Sprite.getSize(spr);
 
     if (!inRange(offsetX, 0, sourceWidth + 1)) {
@@ -87,8 +80,16 @@ export const Sprite = {
     if (!inRange(offsetY + targetHeight, 0, sourceHeight + 1)) {
       throw new Error("Requested out-of-range slice");
     }
+    if (
+      targetWidth === sourceWidth &&
+      targetHeight === sourceHeight &&
+      offsetX === 0 &&
+      offsetY === 0
+    ) {
+      return spr.imageData;
+    }
 
-    const result = out ?? new ImageData(targetWidth, targetHeight);
+    const result = new ImageData(targetWidth, targetHeight);
 
     for (const targetRow of range(targetHeight)) {
       const sourceOffset = ((offsetY + targetRow) * sourceWidth + offsetX) * 4;
