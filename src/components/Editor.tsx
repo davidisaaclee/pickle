@@ -95,12 +95,14 @@ export default function Editor({
   );
 
   const exportAsFile = React.useCallback(() => {
-    const dataUri = artboardRef.current?.getDataURI();
-    if (dataUri == null) {
-      return;
-    }
-    downloadURI(dataUri, "da-update");
-  }, []);
+    downloadURI(
+      dataUriForSpriteSheet(
+        animation.sprites,
+        document.createElement("canvas")
+      ),
+      "da-update"
+    );
+  }, [animation.sprites]);
 
   const [cursorPosition, setCursorPosition] = React.useState<[number, number]>([
     5, 5,
@@ -313,4 +315,37 @@ function downloadURI(uri: string, name: string) {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+}
+
+function dataUriForSpriteSheet(
+  sprites: M.Sprite[],
+  canvas: HTMLCanvasElement
+): string {
+  const [sheetWidth, sheetHeight] = sprites.reduce(
+    ([width, height], sprite) => {
+      const [spriteWidth, spriteHeight] = M.Sprite.getSize(sprite);
+      return [Math.max(spriteWidth, width), spriteHeight + height];
+    },
+    [0, 0]
+  );
+
+  const imageData = new ImageData(sheetWidth, sheetHeight);
+
+  let sheetBufferOffsetForCurrentSprite = 0;
+  for (const sprite of sprites) {
+    imageData.data.set(
+      sprite.imageData.data,
+      sheetBufferOffsetForCurrentSprite
+    );
+
+    const [spriteWidth, spriteHeight] = M.Sprite.getSize(sprite);
+    sheetBufferOffsetForCurrentSprite += spriteHeight * spriteWidth * 4;
+  }
+
+  canvas.width = sheetWidth;
+  canvas.height = sheetHeight;
+
+  canvas.getContext("2d")!.putImageData(imageData, 0, 0);
+
+  return canvas.toDataURL();
 }
