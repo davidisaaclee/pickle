@@ -19,6 +19,17 @@ import absurd from "../utility/absurd";
 import { rgbaToCss } from "../utility/colors";
 import usePan, { PanEvent } from "../utility/usePan";
 
+const primaryButtons = {
+  pen: { title: "Paint", key: "paint" },
+  eraser: { title: "Erase", key: "erase" },
+  bucket: { title: "Fill", key: "fill" },
+} as const;
+const secondaryButtons = {
+  pen: { title: "Pick color", key: "pick-color" },
+  eraser: { title: "---", key: null },
+  bucket: { title: "Move", key: "move" },
+} as const;
+
 interface Props {
   setActiveTool: (tool: M.Tool) => void;
   activeTool: M.Tool;
@@ -68,6 +79,8 @@ export default function Editor({
     "cursor" | "direct"
   >("direct");
   const [isPrimaryButtonPressed, setPrimaryButtonPressed] =
+    React.useState(false);
+  const [isSecondaryButtonPressed, setSecondaryButtonPressed] =
     React.useState(false);
 
   const artboardRef = React.useRef<React.ElementRef<typeof Artboard>>(null);
@@ -147,6 +160,16 @@ export default function Editor({
       }
     },
     [cursorPixelPosition, isPrimaryButtonPressed, paintPixels],
+    ([prevPos, ...prevDeps], [nextPos, ...nextDeps]) =>
+      arrayEquals(prevPos, nextPos) && arrayEquals(prevDeps, nextDeps)
+  );
+  useCustomCompareEffect(
+    () => {
+      if (isSecondaryButtonPressed) {
+        pickColorAtLocation(cursorPixelPosition);
+      }
+    },
+    [cursorPixelPosition, isSecondaryButtonPressed, pickColorAtLocation],
     ([prevPos, ...prevDeps], [nextPos, ...nextDeps]) =>
       arrayEquals(prevPos, nextPos) && arrayEquals(prevDeps, nextDeps)
   );
@@ -377,19 +400,16 @@ export default function Editor({
       {interactionMode === "cursor" && (
         <CursorModeButtons
           className={styles.cursorModeButtons}
+          primaryButtonTitle={primaryButtons[activeTool].title}
+          secondaryButtonTitle={secondaryButtons[activeTool].title}
           onButtonChanged={(isDown, buttonType) => {
             switch (buttonType) {
-              case "paint":
+              case "primary":
                 setPrimaryButtonPressed(isDown);
-                if (isDown) {
-                  beginPaint(cursorPosition);
-                }
                 break;
 
-              case "pick-color":
-                if (isDown) {
-                  pickColorAtLocation(cursorPosition);
-                }
+              case "secondary":
+                setSecondaryButtonPressed(isDown);
                 break;
 
               default:

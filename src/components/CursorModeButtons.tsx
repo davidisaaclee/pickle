@@ -5,14 +5,18 @@ import styles from "./CursorModeButtons.module.css";
 interface Props {
   onButtonChanged: (
     isDown: boolean,
-    buttonType: "paint" | "pick-color"
+    buttonType: "primary" | "secondary"
   ) => void;
+  primaryButtonTitle: string;
+  secondaryButtonTitle: string;
   className?: string;
   style?: React.CSSProperties;
 }
 
 export default function CursorModeButtons({
   onButtonChanged,
+  primaryButtonTitle,
+  secondaryButtonTitle,
   className,
   style,
 }: Props) {
@@ -23,10 +27,10 @@ export default function CursorModeButtons({
   onButtonChangedRef.current = onButtonChanged;
 
   React.useEffect(() => {
-    onButtonChangedRef.current(primaryButtonDown, "paint");
+    onButtonChangedRef.current(primaryButtonDown, "primary");
   }, [primaryButtonDown]);
   React.useEffect(() => {
-    onButtonChangedRef.current(secondaryButtonDown, "pick-color");
+    onButtonChangedRef.current(secondaryButtonDown, "secondary");
   }, [secondaryButtonDown]);
 
   return (
@@ -45,7 +49,7 @@ export default function CursorModeButtons({
           setSecondaryButtonDown(false);
         }}
       >
-        Pick color
+        {secondaryButtonTitle}
       </div>
       <div
         className={classNames(styles.button, styles.primaryButton)}
@@ -61,7 +65,7 @@ export default function CursorModeButtons({
           setPrimaryButtonDown(false);
         }}
       >
-        Paint
+        {primaryButtonTitle}
       </div>
     </div>
   );
