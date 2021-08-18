@@ -227,6 +227,11 @@ export const Sprite = {
     out.imageData.data.set(obj.data);
     return out;
   },
+
+  isPointInside(sprite: Sprite, [x, y]: PixelVec2): boolean {
+    const [width, height] = Sprite.getSize(sprite);
+    return x >= 0 && x < width && y >= 0 && y < height;
+  },
 };
 
 export interface Animation {

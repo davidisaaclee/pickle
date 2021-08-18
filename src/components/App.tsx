@@ -138,6 +138,8 @@ export default function App() {
             dispatchRef.current(actions.pushHistory());
             dispatchRef.current(actions.pasteFrame());
           },
+          pickColorAtLocation: (loc) =>
+            dispatchRef.current(actions.pickColorAtLocation(loc)),
         }}
       />
       {/*

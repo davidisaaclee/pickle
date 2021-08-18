@@ -27,6 +27,7 @@ export const actions = {
     createAction<{ locations: M.PixelLocation[]; content: M.PixelContent }>(
       "paintPixels"
     ),
+  pickColorAtLocation: createAction<M.PixelLocation>("pickColorAtLocation"),
   pushHistory: createAction("pushHistory"),
   setActiveTool: createAction<M.Tool>("setActiveTool"),
   setActiveColor: createAction<M.PixelContent>("setActiveColor"),
@@ -189,6 +190,16 @@ export const reducer = createReducer(initialState, (builder) => {
       });
 
       L.currentFrameIndex.update(state, (f) => f + 1);
+    })
+    .addCase(actions.pickColorAtLocation, (state, { payload: location }) => {
+      const loc = location.map(Math.floor) as [number, number];
+      if (!M.Sprite.isPointInside(L.activeSprite.get(state), loc)) {
+        state.activeTool = "eraser";
+        return;
+      }
+
+      const color = M.Sprite.getPixel(L.activeSprite.get(state), loc);
+      L.activeColor.set(state, color);
     })
     .addCase(actions.deleteActiveSprite, (state) => {
       if (L.activeAnimation.get(state).sprites.length <= 1) {

@@ -36,6 +36,7 @@ interface Props {
   redo: () => void;
   addBlankAnimationFrame: () => void;
   duplicateCurrentAnimationFrame: () => void;
+  pickColorAtLocation: (loc: M.PixelLocation) => void;
   setPlayhead: (index: number) => void;
   currentFrameIndex: number;
   cutFrame: () => void;
@@ -61,6 +62,7 @@ export default function Editor({
   currentFrameIndex,
   copyFrame,
   pasteFrame,
+  pickColorAtLocation,
 }: Props) {
   const [interactionMode, setInteractionMode] = React.useState<
     "cursor" | "direct"
@@ -289,10 +291,23 @@ export default function Editor({
       {interactionMode === "cursor" && (
         <CursorModeButtons
           className={styles.cursorModeButtons}
-          onButtonChanged={(isDown) => {
-            setIsCursorPressed(isDown);
-            if (isDown) {
-              beginPaint(cursorPosition);
+          onButtonChanged={(isDown, buttonType) => {
+            switch (buttonType) {
+              case "paint":
+                setIsCursorPressed(isDown);
+                if (isDown) {
+                  beginPaint(cursorPosition);
+                }
+                break;
+
+              case "pick-color":
+                if (isDown) {
+                  pickColorAtLocation(cursorPosition);
+                }
+                break;
+
+              default:
+                return absurd(buttonType);
             }
           }}
         />
