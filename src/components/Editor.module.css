@@ -2,7 +2,6 @@
   display: flex;
   flex-flow: column;
   height: 100%;
-  background-color: #448;
   touch-action: none;
 }
 
@@ -68,6 +67,12 @@
   right: 0;
   background-color: darkgray;
   height: 80px;
+}
+
+@media (display-mode: standalone) {
+  .timeline {
+    margin-bottom: 24px;
+  }
 }
 
 .cursorModeButtons {

@@ -8,6 +8,7 @@ body {
 body,
 html,
 #root {
+  background-color: #448;
   height: 100%;
 }
 
