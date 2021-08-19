@@ -1,9 +1,15 @@
 import * as React from "react";
 import * as M from "../model";
+import { useCustomCompareCallback } from "use-custom-compare";
 import { vec2 } from "../utility/gl-matrix";
 import Editor from "./Editor";
 import { reducer, initialState, selectors, actions } from "./reducer";
 import absurd from "../utility/absurd";
+import arrayEquals from "../utility/arrayEquals";
+
+function tripleEq<T>(a: T, b: T) {
+  return a === b;
+}
 
 interface ConsoleOverride<T> {
   log: (...args: any[]) => T;
@@ -30,6 +36,37 @@ export function useConsoleOverrides<T = void>(
   return log;
 }
 
+type Comparator<T> = (a: T, b: T) => boolean;
+type FlattenComparators = (<A>(
+  c: readonly [Comparator<A>]
+) => Comparator<readonly [A]>) &
+  (<A, B>(
+    c: readonly [Comparator<A>, Comparator<B>]
+  ) => Comparator<readonly [A, B]>) &
+  (<A, B, C>(
+    c: readonly [Comparator<A>, Comparator<B>, Comparator<C>]
+  ) => Comparator<readonly [A, B, C]>) &
+  (<A, B, C, D>(
+    c: readonly [Comparator<A>, Comparator<B>, Comparator<C>, Comparator<D>]
+  ) => Comparator<readonly [A, B, C, D]>);
+
+const flattenComparators: FlattenComparators = (
+  comparators: readonly Comparator<any>[]
+): Comparator<readonly any[]> => {
+  return (left, right) => {
+    if (left.length !== right.length) {
+      throw new Error("Length mismatch");
+    }
+
+    for (let i = 0; i < left.length; i++) {
+      if (!comparators[i](left[i], right[i])) {
+        return false;
+      }
+    }
+    return true;
+  };
+};
+
 export default function App() {
   const [state, dispatch] = React.useReducer(reducer, initialState);
 
@@ -38,7 +75,7 @@ export default function App() {
 
   const activeSprite = selectors.activeSprite(state);
 
-  const paintPixels = React.useCallback(
+  const paintPixels = useCustomCompareCallback(
     (artboardPos: readonly [number, number]) => {
       const loc = vec2.toTuple(vec2.floor(vec2.create(), artboardPos));
 
@@ -64,10 +101,11 @@ export default function App() {
         return absurd(state.activeTool);
       }
     },
-    [state.activeColor, state.activeTool]
+    [state.activeColor, state.activeTool],
+    flattenComparators([arrayEquals, tripleEq])
   );
 
-  const beginPaint = React.useCallback(
+  const beginPaint = useCustomCompareCallback(
     (artboardPos: readonly [number, number]) => {
       const loc = vec2.toTuple(vec2.floor(vec2.create(), artboardPos));
       if (state.activeTool === "bucket") {
@@ -83,7 +121,8 @@ export default function App() {
         paintPixels(loc);
       }
     },
-    [paintPixels, state.activeTool, state.activeColor]
+    [paintPixels, state.activeTool, state.activeColor],
+    flattenComparators([tripleEq, tripleEq, arrayEquals])
   );
 
   const _setActiveColor = React.useCallback(
@@ -94,6 +133,12 @@ export default function App() {
   const _setActiveTool = React.useCallback((tool: M.Tool) => {
     dispatchRef.current(actions.setActiveTool(tool));
   }, []);
+
+  const translateSprite = React.useCallback(
+    (offset: M.ReadonlyPixelVec2) =>
+      dispatchRef.current(actions.translateSprite({ offset })),
+    []
+  );
 
   // const log = useConsoleOverrides({
   //   log: (...msgs) => {
@@ -120,8 +165,7 @@ export default function App() {
           setPlayhead: (index) => dispatch(actions.movePlayhead(index)),
           beginPaint,
           paintPixels,
-          translateSprite: (offset) =>
-            dispatchRef.current(actions.translateSprite({ offset })),
+          translateSprite,
           undo: () => dispatch(actions.undo()),
           redo: () => dispatch(actions.redo()),
           currentFrameIndex: selectors.currentFrameIndex(state),
