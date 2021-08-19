@@ -80,3 +80,8 @@
   right: 20px;
   bottom: 20px;
 }
+
+.highlight {
+  position: absolute;
+  opacity: 0.5;
+}

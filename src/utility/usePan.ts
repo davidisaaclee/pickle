@@ -6,14 +6,19 @@ export interface PanEvent<E = Element> {
 }
 
 export default function usePan<T extends React.ComponentType & Element>({
-  onPanStart,
-  onPanMove,
-  onPanEnd,
-}: {
+  onPanStart = () => {},
+  onPanMove = () => {},
+  onPanEnd = () => {},
+  onPanOver = () => {},
+}: Partial<{
   onPanStart: (event: PanEvent<T>) => void;
   onPanMove: (event: PanEvent<T>) => void;
   onPanEnd: (event: PanEvent<T>) => void;
-}): { bind: () => React.ComponentProps<T> & any } {
+
+  // triggered when a cursor-based device (like mouse) is hovering over the
+  // element, whether pressed or not
+  onPanOver: (event: PanEvent<T>) => void;
+}>): { bind: () => React.ComponentProps<T> & any } {
   return {
     bind() {
       return {
@@ -25,13 +30,17 @@ export default function usePan<T extends React.ComponentType & Element>({
           });
         },
         onPointerMove(event: React.PointerEvent<T>) {
+          const panEvent: PanEvent<T> = {
+            xy: [event.clientX, event.clientY],
+            currentTarget: event.currentTarget,
+          };
+
+          onPanOver(panEvent);
+
           if (!event.currentTarget.hasPointerCapture(event.pointerId)) {
             return;
           }
-          onPanMove({
-            xy: [event.clientX, event.clientY],
-            currentTarget: event.currentTarget,
-          });
+          onPanMove(panEvent);
         },
         onPointerUp(event: React.PointerEvent<T>) {
           if (!event.currentTarget.hasPointerCapture(event.pointerId)) {

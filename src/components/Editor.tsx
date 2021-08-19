@@ -1,9 +1,6 @@
 import * as React from "react";
 import classNames from "classnames";
-import {
-  useCustomCompareMemo,
-  useCustomCompareEffect,
-} from "use-custom-compare";
+import { useCustomCompareMemo } from "use-custom-compare";
 import Artboard from "../components/Artboard";
 import Toolbar from "../components/Toolbar";
 import Menubar from "../components/Menubar";
@@ -128,6 +125,11 @@ export default function Editor({
     5, 5,
   ]);
 
+  const cursorPixelPosition = cursorPosition.map(Math.floor) as [
+    number,
+    number
+  ];
+
   const absoluteCursorPosition = useCustomCompareMemo(
     () =>
       vec2.transformMat2d(
@@ -136,6 +138,19 @@ export default function Editor({
         mat2d.invert(mat2d.create(), artboardClientTransform)
       ),
     [cursorPosition, artboardClientTransform],
+    ([prevPos, prevTransform], [nextPos, nextTransform]) =>
+      arrayEquals(prevPos, nextPos) &&
+      mat2d.equals(prevTransform, nextTransform)
+  );
+
+  const absoluteCursorPixelPosition = useCustomCompareMemo(
+    () =>
+      vec2.transformMat2d(
+        vec2.create(),
+        cursorPixelPosition,
+        mat2d.invert(mat2d.create(), artboardClientTransform)
+      ),
+    [cursorPixelPosition, artboardClientTransform],
     ([prevPos, prevTransform], [nextPos, nextTransform]) =>
       arrayEquals(prevPos, nextPos) &&
       mat2d.equals(prevTransform, nextTransform)
@@ -151,11 +166,6 @@ export default function Editor({
     },
     [setCursorPosition]
   );
-
-  const cursorPixelPosition = cursorPosition.map(Math.floor) as [
-    number,
-    number
-  ];
   useOnChange(
     ([, wassPrimaryButtonPressed]) => {
       if (isPrimaryButtonPressed) {
@@ -316,6 +326,16 @@ export default function Editor({
         setPrimaryButtonPressed(false);
       }
     },
+    onPanOver: ({ xy }) => {
+      if (interactionMode !== "direct") {
+        return;
+      }
+      const artboardLocation = artboardLocationFromPanGestureLocation(xy);
+      if (artboardLocation == null) {
+        return;
+      }
+      setCursorPosition(artboardLocation);
+    },
   });
 
   const globalKeyDownHandler = React.useCallback(
@@ -348,6 +368,35 @@ export default function Editor({
     };
   }, [globalKeyDownHandler, globalKeyUpHandler]);
 
+  const cursorHighlightStyle = useCustomCompareMemo(
+    (): React.CSSProperties => {
+      const [spriteWidth, spriteHeight] = M.Sprite.getSize(activeSprite);
+      return {
+        ...vec2.toLeftTop(absoluteCursorPixelPosition),
+        backgroundColor: rgbaToCss(activeColor),
+        width: `${100 / spriteWidth}%`,
+        height: `${100 / spriteHeight}%`,
+        visibility: M.Sprite.isPointInside(activeSprite, cursorPixelPosition)
+          ? "visible"
+          : "hidden",
+      };
+    },
+    [
+      activeColor,
+      absoluteCursorPixelPosition,
+      cursorPixelPosition,
+      activeSprite,
+    ],
+    (
+      [prevColor, prevAbsCursorPos, prevCursorPos, ...prevRest],
+      [nextColor, nextAbsCursorPos, nextCursorPos, ...nextRest]
+    ) =>
+      arrayEquals(prevColor, nextColor) &&
+      vec2.equals(prevAbsCursorPos, nextAbsCursorPos) &&
+      vec2.equals(prevCursorPos, nextCursorPos) &&
+      arrayEquals(prevRest, nextRest)
+  );
+
   return (
     <div className={classNames(styles.container)}>
       <div
@@ -369,6 +418,7 @@ export default function Editor({
             sprite={activeSprite}
             transform={artboardClientTransform}
           />
+          <div className={styles.highlight} style={cursorHighlightStyle} />
           {interactionMode === "cursor" ? (
             <div
               className={styles.cursor}
