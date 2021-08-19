@@ -28,7 +28,7 @@ export const useOnChange: UseOnChange = <T extends Array<any>>(
       effect(prevDeps.current);
       prevDeps.current = deps;
     }
-  }, [deps]);
+  }, [deps]); // eslint-disable-line react-hooks/exhaustive-deps
 };
 
 export default useOnChange;

@@ -242,7 +242,7 @@ export default function Editor({
       );
       return locationFromClientPosition(clientPositionInArtboard);
     },
-    []
+    [locationFromClientPosition]
   );
 
   const onArtboardPanStart = React.useCallback(
@@ -261,8 +261,8 @@ export default function Editor({
       prevPositionRef.current = pt;
     },
     [
+      artboardLocationFromPanGestureLocation,
       locationFromClientPosition,
-      beginPaint,
       interactionMode,
       setPrimaryButtonPressed,
     ]
@@ -297,7 +297,12 @@ export default function Editor({
       }
       prevPositionRef.current = scaledPointInGestureTarget;
     },
-    [locationFromClientPosition, paintPixels, moveCursor, interactionMode]
+    [
+      artboardLocationFromPanGestureLocation,
+      locationFromClientPosition,
+      moveCursor,
+      interactionMode,
+    ]
   );
 
   const { bind: bindDrag } = usePan({
@@ -319,19 +324,16 @@ export default function Editor({
         setSecondaryButtonPressed(true);
       }
     },
-    [setPrimaryButtonPressed, isPrimaryButtonPressed]
+    [isPrimaryButtonPressed, isSecondaryButtonPressed]
   );
-  const globalKeyUpHandler = React.useCallback(
-    (event: KeyboardEvent) => {
-      if (event.key === "x") {
-        setPrimaryButtonPressed(false);
-      }
-      if (event.key === "c") {
-        setSecondaryButtonPressed(false);
-      }
-    },
-    [setPrimaryButtonPressed]
-  );
+  const globalKeyUpHandler = React.useCallback((event: KeyboardEvent) => {
+    if (event.key === "x") {
+      setPrimaryButtonPressed(false);
+    }
+    if (event.key === "c") {
+      setSecondaryButtonPressed(false);
+    }
+  }, []);
 
   React.useEffect(() => {
     window.addEventListener("keydown", globalKeyDownHandler);
