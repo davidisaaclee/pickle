@@ -388,12 +388,24 @@ function useOnCursorChangedCallback({
 ] {
   return [
     React.useCallback(
-      (position, buttonMask, [prevCursorX, prevCursorY], prevButtonMask) => {
+      (position, buttonMask, prevPosition, prevButtonMask) => {
+        const [prevCursorX, prevCursorY] = prevPosition;
         const cursorPixelPosition = position.map(Math.floor) as [
           number,
           number
         ];
-        if (buttonMask & 0b1) {
+        const prevCursorPixelPosition = prevPosition.map(Math.floor) as [
+          number,
+          number
+        ];
+        if (
+          prevButtonMask === buttonMask &&
+          arrayEquals(cursorPixelPosition, prevCursorPixelPosition)
+        ) {
+          // avoid causing updates when cursor has not meaningfully changed
+          return;
+        }
+
         if (!!(buttonMask & 0b1)) {
           if (!(prevButtonMask & 0b1)) {
             // button was just pressed
