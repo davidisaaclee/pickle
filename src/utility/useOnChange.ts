@@ -15,6 +15,11 @@ type UseOnChange = (<A>(
     effect: (prevDeps: [A, B, C]) => void | (() => void),
     deps: [A, B, C],
     customCompare?: (prev: [A, B, C], next: [A, B, C]) => boolean
+  ) => void) &
+  (<A, B, C, D>(
+    effect: (prevDeps: [A, B, C, D]) => void | (() => void),
+    deps: [A, B, C, D],
+    customCompare?: (prev: [A, B, C, D], next: [A, B, C, D]) => boolean
   ) => void);
 
 export const useOnChange: UseOnChange = <T extends Array<any>>(
