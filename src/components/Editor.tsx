@@ -156,13 +156,16 @@ export default function Editor({
     number,
     number
   ];
-  useCustomCompareEffect(
-    () => {
+  useOnChange(
+    ([, wassPrimaryButtonPressed]) => {
       if (isPrimaryButtonPressed) {
+        if (!wassPrimaryButtonPressed) {
+          beginPaint(cursorPixelPosition);
+        }
         paintPixels(cursorPixelPosition);
       }
     },
-    [cursorPixelPosition, isPrimaryButtonPressed, paintPixels],
+    [cursorPixelPosition, isPrimaryButtonPressed, paintPixels, beginPaint],
     ([prevPos, ...prevDeps], [nextPos, ...nextDeps]) =>
       arrayEquals(prevPos, nextPos) && arrayEquals(prevDeps, nextDeps)
   );
