@@ -110,6 +110,7 @@ export default function Timeline({
                 index >= sprites.length * 2;
               return (
                 <Button
+                  key={index}
                   ref={(elm) => {
                     frameRefs.current[index] = elm;
                   }}

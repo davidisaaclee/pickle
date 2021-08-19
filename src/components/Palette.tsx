@@ -23,6 +23,7 @@ export default function Palette({
     <div className={classNames(styles.container, className)} style={style}>
       {presetPalette.map((color) => (
         <Button
+          key={color.join(",")}
           className={classNames(
             styles.swatchListItem,
             arrayEquals(selectedColor, color) && styles.selected
