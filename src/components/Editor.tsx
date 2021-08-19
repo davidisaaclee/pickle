@@ -88,7 +88,7 @@ export default function Editor({
   const artboardClientSize = useValueFromInnerWindowSize<[number, number]>(
     ([width, height]) => {
       const minorLength = Math.min(width, height);
-      return [minorLength * 0.5, minorLength * 0.5];
+      return [minorLength * 0.7, minorLength * 0.7];
     }
   );
 
@@ -399,69 +399,92 @@ export default function Editor({
 
   return (
     <div className={classNames(styles.container)}>
-      <div
-        ref={panGestureTargetRef}
-        className={styles.artboardStage}
-        {...bindDrag()}
-      >
+      <div className={styles.mainWindow}>
         <div
-          ref={artboardContainerRef}
-          className={classNames(styles.artboardContainer)}
-          style={{
-            width: artboardClientSize[0],
-            height: artboardClientSize[1],
-          }}
+          ref={panGestureTargetRef}
+          className={styles.artboardStage}
+          {...bindDrag()}
         >
-          <Artboard
-            className={styles.artboard}
-            ref={artboardRef}
-            sprite={activeSprite}
-            transform={artboardClientTransform}
-          />
-          <div className={styles.highlight} style={cursorHighlightStyle} />
-          {interactionMode === "cursor" ? (
-            <div
-              className={styles.cursor}
-              style={vec2.toLeftTop(absoluteCursorPosition)}
+          <div
+            ref={artboardContainerRef}
+            className={classNames(styles.artboardContainer)}
+            style={{
+              width: artboardClientSize[0],
+              height: artboardClientSize[1],
+            }}
+          >
+            <Artboard
+              className={styles.artboard}
+              ref={artboardRef}
+              sprite={activeSprite}
+              transform={artboardClientTransform}
             />
-          ) : (
-            <></>
-          )}
+            <div className={styles.highlight} style={cursorHighlightStyle} />
+            {interactionMode === "cursor" ? (
+              <div
+                className={styles.cursor}
+                style={vec2.toLeftTop(absoluteCursorPosition)}
+              />
+            ) : (
+              <></>
+            )}
+          </div>
         </div>
-      </div>
-      <div className={styles.toolGroup}>
-        <div
-          className={styles.colorSwatch}
-          style={{ backgroundColor: rgbaToCss(activeColor) }}
+        <div className={styles.colorGroup}>
+          <Palette onSelectColor={setActiveColor} selectedColor={activeColor} />
+        </div>
+        <Toolbar
+          className={styles.toolbar}
+          activeTool={activeTool}
+          onSelectTool={setActiveTool}
         />
-        <Palette onSelectColor={setActiveColor} selectedColor={activeColor} />
-        <Toolbar activeTool={activeTool} onSelectTool={setActiveTool} />
+        <Menubar
+          className={styles.menubar}
+          onTapButton={(button) => {
+            switch (button) {
+              case "undo":
+                return undo();
+              case "redo":
+                return redo();
+              case "export":
+                return exportAsFile();
+              case "toggle-cursor":
+                return setInteractionMode((prev) =>
+                  prev === "cursor" ? "direct" : "cursor"
+                );
+              case "cut-frame":
+                return cutFrame();
+              case "copy-frame":
+                return copyFrame();
+              case "paste-frame":
+                return pasteFrame();
+              default:
+                return absurd(button);
+            }
+          }}
+        />
+        {interactionMode === "cursor" && (
+          <CursorModeButtons
+            className={styles.cursorModeButtons}
+            primaryButtonTitle={primaryButtons[activeTool].title}
+            secondaryButtonTitle={secondaryButtons[activeTool].title}
+            onButtonChanged={(isDown, buttonType) => {
+              switch (buttonType) {
+                case "primary":
+                  setPrimaryButtonPressed(isDown);
+                  break;
+
+                case "secondary":
+                  setSecondaryButtonPressed(isDown);
+                  break;
+
+                default:
+                  return absurd(buttonType);
+              }
+            }}
+          />
+        )}
       </div>
-      <Menubar
-        className={styles.menubar}
-        onTapButton={(button) => {
-          switch (button) {
-            case "undo":
-              return undo();
-            case "redo":
-              return redo();
-            case "export":
-              return exportAsFile();
-            case "toggle-cursor":
-              return setInteractionMode((prev) =>
-                prev === "cursor" ? "direct" : "cursor"
-              );
-            case "cut-frame":
-              return cutFrame();
-            case "copy-frame":
-              return copyFrame();
-            case "paste-frame":
-              return pasteFrame();
-            default:
-              return absurd(button);
-          }
-        }}
-      />
       <Timeline
         className={styles.timeline}
         sprites={animation.sprites}
@@ -477,27 +500,6 @@ export default function Editor({
           }
         }}
       />
-      {interactionMode === "cursor" && (
-        <CursorModeButtons
-          className={styles.cursorModeButtons}
-          primaryButtonTitle={primaryButtons[activeTool].title}
-          secondaryButtonTitle={secondaryButtons[activeTool].title}
-          onButtonChanged={(isDown, buttonType) => {
-            switch (buttonType) {
-              case "primary":
-                setPrimaryButtonPressed(isDown);
-                break;
-
-              case "secondary":
-                setSecondaryButtonPressed(isDown);
-                break;
-
-              default:
-                return absurd(buttonType);
-            }
-          }}
-        />
-      )}
     </div>
   );
 }

@@ -1,20 +1,20 @@
 .container {
   display: flex;
-  flex-flow: column;
+  flex-flow: row;
 
   color: white;
 }
 
 .container > * {
-  margin-top: 8px;
+  margin-left: 8px;
 }
 .container > *:first-child {
-  margin-top: 0;
+  margin-left: 0;
 }
 
 .toolButton {
   width: 50px;
-  height: 50px;
+  height: 30px;
   display: flex;
   flex-flow: column;
   align-items: center;
