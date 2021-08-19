@@ -6,6 +6,8 @@ import styles from "./Toolbar.module.css";
 interface Props {
   activeTool: M.Tool;
   onSelectTool: (tool: M.Tool) => void;
+  applyEditsAcrossSprites: boolean;
+  setApplyEditsAcrossSprites: (v: boolean) => void;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -13,6 +15,8 @@ interface Props {
 export default function Toolbar({
   activeTool,
   onSelectTool,
+  applyEditsAcrossSprites,
+  setApplyEditsAcrossSprites,
   className,
   style,
 }: Props) {
@@ -45,6 +49,23 @@ export default function Toolbar({
           {tool}
         </label>
       ))}
+      <div
+        className={classNames(
+          styles.mapEditToggle,
+          styles.toolButton,
+          applyEditsAcrossSprites && styles.selected
+        )}
+      >
+        <input
+          id="applyEditsAcrossSprites"
+          type="checkbox"
+          checked={applyEditsAcrossSprites}
+          onChange={(event) => {
+            setApplyEditsAcrossSprites(event.currentTarget.checked);
+          }}
+        />
+        <label htmlFor="applyEditsAcrossSprites">map</label>
+      </div>
     </div>
   );
 }

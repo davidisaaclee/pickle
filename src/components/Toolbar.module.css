@@ -31,3 +31,12 @@
   opacity: 0;
   pointer-events: none;
 }
+.toolButton input[type="checkbox"] {
+  position: fixed;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.mapEditToggle.selected {
+  background-color: red;
+}

@@ -147,6 +147,9 @@ export default function App() {
           },
           pickColorAtLocation: (loc) =>
             dispatchRef.current(actions.pickColorAtLocation(loc)),
+          applyEditsAcrossSprites: selectors.applyEditsAcrossSprites(state),
+          setApplyEditsAcrossSprites: (v) =>
+            dispatch(actions.setApplyEditsAcrossSprites(v)),
         }}
       />
       {/*

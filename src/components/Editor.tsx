@@ -52,6 +52,8 @@ interface Props {
   cutFrame: () => void;
   copyFrame: () => void;
   pasteFrame: () => void;
+  applyEditsAcrossSprites: boolean;
+  setApplyEditsAcrossSprites: (v: boolean) => void;
 }
 
 export default function Editor({
@@ -74,6 +76,8 @@ export default function Editor({
   copyFrame,
   pasteFrame,
   pickColorAtLocation,
+  applyEditsAcrossSprites,
+  setApplyEditsAcrossSprites,
 }: Props) {
   const [interactionMode, setInteractionMode] = React.useState<
     "cursor" | "direct"
@@ -82,6 +86,14 @@ export default function Editor({
     React.useState(false);
   const [isSecondaryButtonPressed, setSecondaryButtonPressed] =
     React.useState(false);
+
+  React.useEffect(() => {
+    if (applyEditsAcrossSprites) {
+      document.body.classList.add(styles.mapEditsMode);
+    } else {
+      document.body.classList.remove(styles.mapEditsMode);
+    }
+  }, [applyEditsAcrossSprites]);
 
   const artboardRef = React.useRef<React.ElementRef<typeof Artboard>>(null);
 
@@ -437,6 +449,8 @@ export default function Editor({
           className={styles.toolbar}
           activeTool={activeTool}
           onSelectTool={setActiveTool}
+          applyEditsAcrossSprites={applyEditsAcrossSprites}
+          setApplyEditsAcrossSprites={setApplyEditsAcrossSprites}
         />
         <Menubar
           className={styles.menubar}

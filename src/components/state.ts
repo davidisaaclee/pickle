@@ -13,4 +13,5 @@ export interface State {
   };
   activeTool: M.Tool;
   activeColor: M.PixelContent;
+  applyEditsAcrossSprites: boolean;
 }

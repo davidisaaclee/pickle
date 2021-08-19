@@ -93,3 +93,10 @@
   position: absolute;
   opacity: 0.5;
 }
+
+.mapEditsMode {
+  background-color: #111;
+}
+.mapEditsMode .artboardContainer {
+  outline-color: red;
+}

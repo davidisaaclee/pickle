@@ -26,3 +26,7 @@ export const activeSprite = Lens.of<State, M.Sprite>({
     return state;
   },
 });
+
+export const applyEditsAcrossSprites = Lens.from<State>().prop(
+  "applyEditsAcrossSprites"
+);
