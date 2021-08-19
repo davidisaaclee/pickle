@@ -21,16 +21,16 @@ export const initialState: State = {
 
 export const actions = {
   paintBucket:
-    createAction<{ location: M.PixelLocation; content: M.PixelContent }>(
+    createAction<{ location: M.ReadonlyPixelVec2; content: M.PixelContent }>(
       "paintBucket"
     ),
   paintPixels:
-    createAction<{ locations: M.PixelLocation[]; content: M.PixelContent }>(
+    createAction<{ locations: M.ReadonlyPixelVec2[]; content: M.PixelContent }>(
       "paintPixels"
     ),
   translateSprite:
     createAction<{ offset: M.ReadonlyPixelVec2 }>("translateSprite"),
-  pickColorAtLocation: createAction<M.PixelLocation>("pickColorAtLocation"),
+  pickColorAtLocation: createAction<M.ReadonlyPixelVec2>("pickColorAtLocation"),
   pushHistory: createAction("pushHistory"),
   setActiveTool: createAction<M.Tool>("setActiveTool"),
   setActiveColor: createAction<M.PixelContent>("setActiveColor"),
