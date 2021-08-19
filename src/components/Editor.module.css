@@ -51,8 +51,8 @@
 
 .cursor {
   position: absolute;
-  width: 10px;
-  height: 10px;
+  width: 5px;
+  height: 5px;
   border-radius: 6px;
   border: 1px solid black;
   background-color: hsla(0, 0%, 100%, 50%);
