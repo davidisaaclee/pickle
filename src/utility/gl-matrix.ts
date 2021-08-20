@@ -7,9 +7,9 @@ import {
   ReadonlyVec2,
   ReadonlyMat4,
   ReadonlyMat2d,
-} from 'gl-matrix';
+} from "gl-matrix";
 
-export * from 'gl-matrix';
+export * from "gl-matrix";
 
 interface PointerEventLike {
   clientX: number;
@@ -40,7 +40,7 @@ const extraVec2Methods = {
   fromXY: (xy: { x: number; y: number }) => vec2.fromValues(xy.x, xy.y),
   fromLeftTop: (
     { left, top }: { left: number; top: number },
-    out: vec2 = vec2.create(),
+    out: vec2 = vec2.create()
   ): vec2 => {
     vec2.set(out, left, top);
     return out;
@@ -74,7 +74,7 @@ const extraVec2Methods = {
 
   fromClientPosition: (
     event: { clientX: number; clientY: number },
-    out: vec2 = vec2.create(),
+    out: vec2 = vec2.create()
   ) => {
     vec2.set(out, event.clientX, event.clientY);
     return out;
@@ -86,13 +86,13 @@ const extraVec2Methods = {
 
   fromPointerEventRelativeToCurrentTarget: (
     event: PointerEventLike,
-    out: vec2 = vec2.create(),
+    out: vec2 = vec2.create()
   ) => {
     extraVec2Methods.fromClientPosition(event, out);
     vec2.sub(
       out,
       out,
-      extraVec2Methods.fromLeftTop(event.currentTarget.getBoundingClientRect()),
+      extraVec2Methods.fromLeftTop(event.currentTarget.getBoundingClientRect())
     );
     return out;
   },
@@ -111,14 +111,14 @@ const extraVec2Methods = {
 
   /** Hash a vec2 into a string. Useful when attempting to memoize functions that take a vec2. */
   hash: (v: vec2): string => {
-    return extraVec2Methods.toTuple(v).join(',');
+    return extraVec2Methods.toTuple(v).join(",");
   },
 };
 
 const enhancedVec2: typeof vec2 & typeof extraVec2Methods = Object.assign(
   {},
   vec2,
-  extraVec2Methods,
+  extraVec2Methods
 );
 
 const extraMat2dMethods = {
@@ -135,7 +135,7 @@ const extraMat2dMethods = {
     return out;
   },
   components: (
-    mat: ReadonlyMat2d,
+    mat: ReadonlyMat2d
   ): [number, number, number, number, number, number] => [
     extraMat2dMethods.a(mat),
     extraMat2dMethods.b(mat),
@@ -165,7 +165,7 @@ const extraMat2dMethods = {
       extraMat2dMethods.tx(mat),
       extraMat2dMethods.ty(mat),
       0,
-      1,
+      1
     );
   },
 
@@ -181,12 +181,12 @@ const extraMat2dMethods = {
     vec2.transformMat2d(unitY, unitY, mat);
     return vec2.fromValues(
       vec2.distance(zero, unitX),
-      vec2.distance(zero, unitY),
+      vec2.distance(zero, unitY)
     );
   },
 
-  toCSSInstruction: (mat: mat2d) =>
-    `matrix(${extraMat2dMethods.components(mat).join(', ')})`,
+  toCSSInstruction: (mat: ReadonlyMat2d) =>
+    `matrix(${extraMat2dMethods.components(mat).join(", ")})`,
 
   byColumn3x3: (mat: mat2d): Float32Array =>
     Float32Array.from([
@@ -222,7 +222,7 @@ const extraMat2dMethods = {
     ]),
 
   toComponents: (
-    mat: ReadonlyMat2d,
+    mat: ReadonlyMat2d
   ): {
     a: number;
     b: number;
@@ -254,9 +254,11 @@ const extraMat2dMethods = {
     return JSON.stringify(extraMat2dMethods.toComponents(xf));
   },
 
-  decompose(
-    xf: ReadonlyMat2d,
-  ): { translation: vec2; scale: vec2; rotation: number } {
+  decompose(xf: ReadonlyMat2d): {
+    translation: vec2;
+    scale: vec2;
+    rotation: number;
+  } {
     function dropZ(v3: vec3): vec2 {
       return vec2.fromValues(v3[0], v3[1]);
     }
@@ -280,7 +282,7 @@ const extraMat2dMethods = {
 
   compose(
     out: Mat2d,
-    components: { translation: vec2; scale: vec2; rotation: number },
+    components: { translation: vec2; scale: vec2; rotation: number }
   ): Mat2d {
     mat2d.identity(out);
     mat2d.translate(out, out, components.translation);
@@ -293,7 +295,7 @@ const extraMat2dMethods = {
 const enhancedMat2d: typeof mat2d & typeof extraMat2dMethods = Object.assign(
   {},
   mat2d,
-  extraMat2dMethods,
+  extraMat2dMethods
 );
 
 const extraMat4Methods = {
@@ -303,7 +305,7 @@ const extraMat4Methods = {
 const enhancedMat4: typeof mat4 & typeof extraMat4Methods = Object.assign(
   {},
   mat4,
-  extraMat4Methods,
+  extraMat4Methods
 );
 
 export { enhancedVec2 as vec2, enhancedMat2d as mat2d, enhancedMat4 as mat4 };
