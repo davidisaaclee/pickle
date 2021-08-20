@@ -20,6 +20,7 @@
 }
 
 .artboardContainer {
+  position: absolute;
   background-color: white;
   transform-origin: top left;
   /* outline: 3px solid black; */

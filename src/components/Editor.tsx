@@ -13,7 +13,7 @@ import { ReadonlyVec2, ReadonlyMat2d, mat2d, vec2 } from "../utility/gl-matrix";
 import arrayEquals from "../utility/arrayEquals";
 import absurd from "../utility/absurd";
 import { rgbaToCss } from "../utility/colors";
-import usePan, { PanEvent } from "../utility/usePan";
+import usePan, { PanEvent, combineBindHandlers } from "../utility/usePan";
 import useOnChange from "../utility/useOnChange";
 import { Comparator } from "../utility/Comparator";
 
@@ -168,6 +168,98 @@ export default function Editor({
     setCursorClientPosition(stageCenter);
   }, []);
 
+  const zoomArtboard = React.useCallback(
+    (amount: number, center: ReadonlyVec2) => {
+      setClientArtboardTransform((prev) => {
+        const out = mat2d.clone(prev);
+        const offset = vec2.transformMat2d(
+          vec2.create(),
+          center,
+          mat2d.invert(mat2d.create(), out)
+        );
+        mat2d.translate(out, out, offset);
+        mat2d.scale(out, out, [amount, amount]);
+        mat2d.translate(out, out, vec2.negate(vec2.create(), offset));
+        return out;
+      });
+    },
+    []
+  );
+
+  const [shouldAcceptTransformMouseInput, setShouldAcceptTransformMouseInput] =
+    React.useState(false);
+
+  React.useEffect(() => {
+    const keyDownListener = (event: KeyboardEvent) => {
+      if (event.key === " ") {
+        event.preventDefault();
+        setShouldAcceptTransformMouseInput(true);
+      }
+    };
+    const keyUpListener = (event: KeyboardEvent) => {
+      if (event.key === " ") {
+        event.preventDefault();
+        setShouldAcceptTransformMouseInput(false);
+      }
+    };
+
+    document.addEventListener("keydown", keyDownListener);
+    document.addEventListener("keyup", keyUpListener);
+    return () => {
+      document.removeEventListener("keydown", keyDownListener);
+      document.removeEventListener("keyup", keyUpListener);
+    };
+  }, [zoomArtboard]);
+
+  React.useEffect(() => {
+    const wheelListener = (event: WheelEvent) => {
+      if (shouldAcceptTransformMouseInput) {
+        return;
+      }
+      event.preventDefault();
+      const scaleFactor = Math.pow(1.005, event.deltaY);
+      const focus = vec2.fromClientPosition(event);
+      zoomArtboard(scaleFactor, focus);
+    };
+
+    document.addEventListener("wheel", wheelListener, { passive: false });
+    return () => {
+      document.removeEventListener("wheel", wheelListener);
+    };
+  }, [zoomArtboard, shouldAcceptTransformMouseInput]);
+
+  const prevTransformPositionRef = React.useRef<ReadonlyVec2 | null>(null);
+  const { bind: bindTransformHandlers } = usePan({
+    onPanStart(event) {
+      prevTransformPositionRef.current = event.xy;
+    },
+    onPanMove(event) {
+      const prevTransformPosition = prevTransformPositionRef.current;
+      if (prevTransformPosition != null) {
+        const delta = vec2.sub(vec2.create(), event.xy, prevTransformPosition);
+        setClientArtboardTransform((prev) => {
+          const out = mat2d.clone(prev);
+          const translate = mat2d.fromTranslation(mat2d.create(), delta);
+          mat2d.mul(out, translate, out);
+          return out;
+        });
+      }
+      prevTransformPositionRef.current = event.xy;
+    },
+    shouldRespondToEvent(event) {
+      return (
+        shouldAcceptTransformMouseInput ||
+        event.metaKey ||
+        !!(event.buttons & (1 << 2))
+      );
+    },
+  });
+
+  const bindHandlers = React.useMemo(
+    () => combineBindHandlers([bindTransformHandlers, bindDrag]),
+    [bindTransformHandlers, bindDrag]
+  );
+
   return (
     <div className={classNames(styles.container)}>
       <div className={styles.mainWindow}>
@@ -179,7 +271,7 @@ export default function Editor({
             const m = mat2d.invert(mat2d.create(), clientArtboardTransform);
             vec2.transformMat2d(pt, pt, m);
           }}
-          {...bindDrag()}
+          {...bindHandlers()}
         >
           <div
             ref={artboardContainerRef}
@@ -632,16 +724,20 @@ function useEditorPanGesture({
   const { bind } = usePan({
     onPanStart: onArtboardPanStart,
     onPanMove: onArtboardPan,
-    onPanEnd: () => {
+    onPanEnd() {
       if (interactionMode === "direct") {
         setButtonPressed(1, false);
       }
     },
-    onPanOver: ({ xy }) => {
+    onPanOver({ xy }) {
       if (interactionMode !== "direct") {
         return;
       }
       setCursorClientPosition(xy);
+    },
+    shouldRespondToEvent(event) {
+      // only respond to primary mouse button
+      return !!(event.buttons & 1) || event.buttons === 0;
     },
   });
 
