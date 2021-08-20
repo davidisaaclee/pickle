@@ -1,12 +1,11 @@
 import classNames from "classnames";
 import * as React from "react";
 import * as M from "../model";
-import { ReadonlyMat2d, mat2d, vec2 } from "../utility/gl-matrix";
+import { vec2 } from "../utility/gl-matrix";
 import styles from "./Artboard.module.css";
 
 interface Props {
   sprite: M.Sprite;
-  transform?: ReadonlyMat2d;
   offset?: M.PixelVec2;
   contentDimensions?: M.PixelVec2;
   onLayout?: (boundingClientRect: DOMRect) => void;
@@ -18,20 +17,9 @@ interface Ref {
   getDataURI(): string | null;
 }
 
-const identityMatrix: ReadonlyMat2d = mat2d.create();
-
-const matbuffer = mat2d.create();
-
 export default React.memo(
   React.forwardRef<Ref, Props>(function Artboard(
-    {
-      sprite,
-      transform = identityMatrix,
-      offset = [0, 0],
-      contentDimensions = [16, 16],
-      className,
-      style,
-    },
+    { sprite, offset = [0, 0], contentDimensions = [16, 16], className, style },
     forwardedRef
   ) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
@@ -47,15 +35,12 @@ export default React.memo(
         vec2.x(M.Sprite.getSize(sprite)),
         vec2.y(M.Sprite.getSize(sprite))
       );
-      mat2d.invert(matbuffer, transform);
-      const m = mat2d.toComponents(matbuffer);
-      ctx.setTransform(m.a, m.b, m.c, m.d, m.tx, m.ty);
       ctx.putImageData(
         M.Sprite.makeImageDataForSlice(sprite, offset, contentDimensions),
         0,
         0
       );
-    }, [sprite, transform, offset, contentDimensions]);
+    }, [sprite, offset, contentDimensions]);
 
     React.useImperativeHandle(forwardedRef, () => ({
       getDataURI() {

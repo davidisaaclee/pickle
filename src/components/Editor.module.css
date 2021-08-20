@@ -20,12 +20,9 @@
 }
 
 .artboardContainer {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  left: 50%;
-  top: 50%;
   background-color: white;
-  outline: 3px solid black;
+  transform-origin: top left;
+  /* outline: 3px solid black; */
 }
 
 .artboard {

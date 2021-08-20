@@ -9,19 +9,13 @@ import Timeline from "../components/Timeline";
 import CursorModeButtons from "../components/CursorModeButtons";
 import * as M from "../model";
 import styles from "./Editor.module.css";
-import {
-  ReadonlyVec2,
-  ReadonlyMat2d,
-  Vec2,
-  mat2d,
-  vec2,
-} from "../utility/gl-matrix";
-import { useValueFromInnerWindowSize } from "../utility/useWindowResize";
+import { ReadonlyVec2, ReadonlyMat2d, mat2d, vec2 } from "../utility/gl-matrix";
 import arrayEquals from "../utility/arrayEquals";
 import absurd from "../utility/absurd";
 import { rgbaToCss } from "../utility/colors";
 import usePan, { PanEvent } from "../utility/usePan";
 import useOnChange from "../utility/useOnChange";
+import { Comparator } from "../utility/Comparator";
 
 const primaryButtons = {
   pen: { title: "Paint", key: "paint" },
@@ -85,6 +79,12 @@ export default function Editor({
   applyEditsAcrossSprites,
   setApplyEditsAcrossSprites,
 }: Props) {
+  const [cursorClientPosition, setCursorClientPosition] =
+    React.useState<ReadonlyVec2>([0, 0]);
+
+  const [clientArtboardTransform, setClientArtboardTransform] =
+    React.useState<ReadonlyMat2d>(() => mat2d.create());
+
   const [interactionMode, setInteractionMode] = React.useState<
     "cursor" | "direct"
   >("cursor");
@@ -96,22 +96,6 @@ export default function Editor({
       document.body.classList.remove(styles.mapEditsMode);
     }
   }, [applyEditsAcrossSprites]);
-
-  const artboardClientSize = useValueFromInnerWindowSize<[number, number]>(
-    ([width, height]) => {
-      const minorLength = Math.min(width, height);
-      return [minorLength * 0.7, minorLength * 0.7];
-    }
-  );
-
-  /** if `v` is a client position (relative in translation to `Artboard`'s
-   * origin), the following will give the artboard coordinates (translation and
-   * scale relative to pixels):
-   *     vec2.transformMat2d(v, v, artboardClientTransform) */
-  const [artboardClientTransform] = useArtboardClientTransform({
-    spriteSize: M.Sprite.getSize(activeSprite),
-    artboardClientSize,
-  });
 
   const [exportAsFile] = useExportAsFileCallback({
     sprites: animation.sprites,
@@ -125,30 +109,32 @@ export default function Editor({
     activeTool,
   });
 
+  const artboardClientTransform = useCustomCompareMemo(
+    () => mat2d.invert(mat2d.create(), clientArtboardTransform),
+    [clientArtboardTransform],
+    Comparator.flatten([mat2d.equals])
+  );
+
   const {
     absoluteCursorPixelPosition,
-    absoluteCursorPosition,
     cursorPixelPosition,
-    setCursorPosition,
-    moveCursorPosition,
+    moveCursorClientPosition,
     isButtonPressed,
     setButtonPressed,
   } = useCursor({
-    initialCursorPosition: [5, 5],
+    cursorClientPosition,
+    setCursorClientPosition,
     transform: artboardClientTransform,
     onCursorChanged,
   });
 
-  const {
-    bindHandlers: bindDrag,
-    panGestureTargetRef,
-    artboardContainerRef,
-  } = useEditorPanGesture({
-    transform: artboardClientTransform,
+  const artboardStageRef = React.useRef<React.ElementRef<"div">>(null);
+
+  const { bindHandlers: bindDrag, artboardContainerRef } = useEditorPanGesture({
     setButtonPressed,
     interactionMode,
-    setCursorPosition,
-    moveCursorPosition,
+    setCursorClientPosition,
+    moveCursorClientPosition,
   });
 
   useHotkeyButtonPresses({ isButtonPressed, setButtonPressed });
@@ -160,37 +146,60 @@ export default function Editor({
     activeSprite,
   });
 
+  React.useLayoutEffect(() => {
+    const out = mat2d.create();
+    const artboardStage = artboardStageRef.current;
+    if (artboardStage == null) {
+      return;
+    }
+
+    const stageBounds = artboardStage.getBoundingClientRect();
+
+    const stageCenter = vec2.fromSize(stageBounds);
+    vec2.scale(stageCenter, stageCenter, 0.5);
+
+    mat2d.translate(out, out, stageCenter);
+    mat2d.scale(out, out, [10, 10]);
+
+    // half the size of the untransformed artboard :|
+    mat2d.translate(out, out, [-8, -8]);
+
+    setClientArtboardTransform(out);
+    setCursorClientPosition(stageCenter);
+  }, []);
+
   return (
     <div className={classNames(styles.container)}>
       <div className={styles.mainWindow}>
         <div
-          ref={panGestureTargetRef}
+          ref={artboardStageRef}
           className={styles.artboardStage}
+          onMouseDown={(event) => {
+            const pt = vec2.fromClientPosition(event);
+            const m = mat2d.invert(mat2d.create(), clientArtboardTransform);
+            vec2.transformMat2d(pt, pt, m);
+          }}
           {...bindDrag()}
         >
           <div
             ref={artboardContainerRef}
             className={classNames(styles.artboardContainer)}
             style={{
-              width: artboardClientSize[0],
-              height: artboardClientSize[1],
+              ...vec2.toSize(M.Sprite.getSize(activeSprite)),
+              transform: mat2d.toCSSInstruction(clientArtboardTransform),
             }}
           >
-            <Artboard
-              className={styles.artboard}
-              sprite={activeSprite}
-              transform={artboardClientTransform}
-            />
+            <Artboard className={styles.artboard} sprite={activeSprite} />
             <div className={styles.highlight} style={cursorHighlightStyle} />
-            {interactionMode === "cursor" ? (
-              <div
-                className={styles.cursor}
-                style={vec2.toLeftTop(absoluteCursorPosition)}
-              />
-            ) : (
-              <></>
-            )}
           </div>
+          {interactionMode === "cursor" ? (
+            <div
+              className={styles.cursor}
+              style={vec2.toLeftTop(cursorClientPosition)}
+            />
+          ) : (
+            <></>
+          )}
         </div>
         <div className={styles.colorGroup}>
           <Palette onSelectColor={setActiveColor} selectedColor={activeColor} />
@@ -366,6 +375,94 @@ function useExportAsFileCallback({
   ];
 }
 
+type CursorState = {
+  position: M.ReadonlyPixelVec2;
+  buttonMask: number;
+};
+
+type OnCursorChangedCallback = (
+  currentState: CursorState,
+  previousState: CursorState
+) => void;
+
+function useCursor({
+  onCursorChanged,
+  transform,
+  cursorClientPosition,
+  setCursorClientPosition,
+}: {
+  onCursorChanged: OnCursorChangedCallback;
+  transform: ReadonlyMat2d;
+  cursorClientPosition: ReadonlyVec2;
+  setCursorClientPosition: React.Dispatch<React.SetStateAction<ReadonlyVec2>>;
+}): {
+  moveCursorClientPosition: (delta: ReadonlyVec2) => void;
+  absoluteCursorPixelPosition: ReadonlyVec2;
+  cursorPixelPosition: M.ReadonlyPixelVec2;
+  isButtonPressed: (queryMask: number) => boolean;
+  setButtonPressed: (mask: number, isPressed: boolean) => void;
+} {
+  const [buttonMask, setButtonMask] = React.useState(0);
+
+  // TODO: not correct yet – currenttly translation relative to pgae
+  const artboardCursorPosition = vec2.transformMat2d(
+    vec2.create(),
+    cursorClientPosition,
+    transform
+  );
+
+  const cursorPixelPosition = artboardCursorPosition.map(Math.floor) as [
+    number,
+    number
+  ];
+
+  useOnChange(
+    ([prevCursorPixelPosition, prevButtonMask]) => {
+      onCursorChanged(
+        {
+          position: cursorPixelPosition,
+          buttonMask,
+        },
+        {
+          position: prevCursorPixelPosition,
+          buttonMask: prevButtonMask,
+        }
+      );
+    },
+    [cursorPixelPosition, buttonMask, onCursorChanged],
+    ([prevPos, ...prevDeps], [nextPos, ...nextDeps]) =>
+      arrayEquals(prevPos, nextPos) && arrayEquals(prevDeps, nextDeps)
+  );
+
+  const absoluteCursorPixelPosition = cursorClientPosition.map(
+    Math.floor
+  ) as ReadonlyVec2;
+
+  const moveCursorClientPosition = React.useCallback(
+    (delta: ReadonlyVec2) => {
+      setCursorClientPosition((prev) => vec2.add(vec2.create(), prev, delta));
+    },
+    [setCursorClientPosition]
+  );
+
+  return {
+    moveCursorClientPosition,
+    absoluteCursorPixelPosition,
+    cursorPixelPosition,
+    isButtonPressed: (buttonNumber: number) =>
+      !!((1 << (buttonNumber - 1)) & buttonMask),
+    setButtonPressed: (buttonNumber, isPressed: boolean) =>
+      setButtonMask((prev) => {
+        const mask = 1 << (buttonNumber - 1);
+        if (isPressed) {
+          return prev | mask;
+        } else {
+          return prev & ~mask;
+        }
+      }),
+  };
+}
+
 function useOnCursorChangedCallback({
   beginPaint,
   paintPixels,
@@ -378,17 +475,13 @@ function useOnCursorChangedCallback({
   translateSprite: (offset: readonly [number, number]) => void;
   pickColorAtLocation: (loc: M.PixelLocation) => void;
   activeTool: M.Tool;
-}): [
-  (
-    position: M.ReadonlyPixelVec2,
-    buttonMask: number,
-    previousPosition: M.ReadonlyPixelVec2,
-    previousButtonMask: number
-  ) => void
-] {
+}): [OnCursorChangedCallback] {
   return [
     React.useCallback(
-      (position, buttonMask, prevPosition, prevButtonMask) => {
+      (
+        { position, buttonMask },
+        { position: prevPosition, buttonMask: prevButtonMask }
+      ) => {
         const [prevCursorX, prevCursorY] = prevPosition;
         const cursorPixelPosition = position.map(Math.floor) as [
           number,
@@ -445,106 +538,6 @@ function useOnCursorChangedCallback({
   ];
 }
 
-function useCursor({
-  initialCursorPosition,
-  onCursorChanged,
-  transform,
-}: {
-  initialCursorPosition: M.ReadonlyPixelVec2;
-  onCursorChanged: (
-    position: M.ReadonlyPixelVec2,
-    buttonMask: number,
-    previousPosition: M.ReadonlyPixelVec2,
-    previousButtonMask: number
-  ) => void;
-  transform: ReadonlyMat2d;
-}): {
-  setCursorPosition: (nextPosition: M.PixelVec2) => void;
-  moveCursorPosition: (delta: M.PixelVec2) => void;
-  absoluteCursorPixelPosition: ReadonlyVec2;
-  absoluteCursorPosition: ReadonlyVec2;
-  cursorPixelPosition: M.ReadonlyPixelVec2;
-  isButtonPressed: (queryMask: number) => boolean;
-  setButtonPressed: (mask: number, isPressed: boolean) => void;
-} {
-  const [cursorPosition, setCursorPosition] =
-    React.useState<M.ReadonlyPixelVec2>(initialCursorPosition);
-
-  const [buttonMask, setButtonMask] = React.useState(0);
-
-  const cursorPixelPosition = cursorPosition.map(Math.floor) as [
-    number,
-    number
-  ];
-
-  useOnChange(
-    ([prevCursorPixelPosition, prevButtonMask]) => {
-      onCursorChanged(
-        cursorPixelPosition,
-        buttonMask,
-        prevCursorPixelPosition,
-        prevButtonMask
-      );
-    },
-    [cursorPixelPosition, buttonMask, onCursorChanged],
-    ([prevPos, ...prevDeps], [nextPos, ...nextDeps]) =>
-      arrayEquals(prevPos, nextPos) && arrayEquals(prevDeps, nextDeps)
-  );
-
-  const absoluteCursorPosition = useCustomCompareMemo(
-    () =>
-      vec2.transformMat2d(
-        vec2.create(),
-        cursorPosition,
-        mat2d.invert(mat2d.create(), transform)
-      ),
-    [cursorPosition, transform],
-    ([prevPos, prevTransform], [nextPos, nextTransform]) =>
-      arrayEquals(prevPos, nextPos) &&
-      mat2d.equals(prevTransform, nextTransform)
-  );
-
-  const absoluteCursorPixelPosition = useCustomCompareMemo(
-    () =>
-      vec2.transformMat2d(
-        vec2.create(),
-        cursorPixelPosition,
-        mat2d.invert(mat2d.create(), transform)
-      ),
-    [cursorPixelPosition, transform],
-    ([prevPos, prevTransform], [nextPos, nextTransform]) =>
-      arrayEquals(prevPos, nextPos) &&
-      mat2d.equals(prevTransform, nextTransform)
-  );
-
-  const moveCursorPosition = React.useCallback(
-    (delta: M.PixelVec2) => {
-      const [dx, dy] = delta;
-      setCursorPosition(([prevX, prevY]) => [prevX + dx, prevY + dy]);
-    },
-    [setCursorPosition]
-  );
-
-  return {
-    setCursorPosition,
-    moveCursorPosition,
-    absoluteCursorPixelPosition,
-    absoluteCursorPosition,
-    cursorPixelPosition,
-    isButtonPressed: (buttonNumber: number) =>
-      !!((1 << (buttonNumber - 1)) & buttonMask),
-    setButtonPressed: (buttonNumber, isPressed: boolean) =>
-      setButtonMask((prev) => {
-        const mask = 1 << (buttonNumber - 1);
-        if (isPressed) {
-          return prev | mask;
-        } else {
-          return prev & ~mask;
-        }
-      }),
-  };
-}
-
 function useHotkeyButtonPresses({
   isButtonPressed,
   setButtonPressed,
@@ -587,135 +580,53 @@ function useHotkeyButtonPresses({
 }
 
 function useEditorPanGesture({
-  transform,
   setButtonPressed,
-  setCursorPosition,
-  moveCursorPosition,
+  setCursorClientPosition,
+  moveCursorClientPosition,
   interactionMode,
 }: {
-  transform: ReadonlyMat2d;
   setButtonPressed: (mask: number, isPressed: boolean) => void;
-  setCursorPosition: (nextPosition: M.PixelVec2) => void;
-  moveCursorPosition: (delta: M.PixelVec2) => void;
+  setCursorClientPosition: (nextPosition: ReadonlyVec2) => void;
+  moveCursorClientPosition: (delta: ReadonlyVec2) => void;
   interactionMode: "direct" | "cursor";
 }): {
   bindHandlers: () => any;
-  panGestureTargetRef: React.Ref<HTMLDivElement>;
   artboardContainerRef: React.Ref<HTMLDivElement>;
 } {
   const bcrRef = React.useRef<DOMRect>(new DOMRect());
 
-  const prevPositionRef = React.useRef<[number, number] | null>(null);
-
-  // mutates input
-  const convertClientPositionToArtboard = React.useCallback(
-    (clientPos: Vec2): void => {
-      vec2.sub(clientPos, clientPos, vec2.fromLeftTop(bcrRef.current));
-      vec2.transformMat2d(clientPos, clientPos, transform);
-    },
-    [transform]
-  );
-
-  const locationFromClientPosition = React.useCallback(
-    (clientLoc: ReadonlyVec2): M.PixelLocation => {
-      const p = vec2.clone(clientLoc);
-      convertClientPositionToArtboard(p);
-      return vec2.toTuple(p);
-    },
-    [convertClientPositionToArtboard]
-  );
+  const prevPositionRef = React.useRef<ReadonlyVec2 | null>(null);
 
   const artboardContainerRef = React.useRef<React.ElementRef<"div">>(null);
-  const panGestureTargetRef = React.useRef<React.ElementRef<"div">>(null);
-
-  const artboardLocationFromPanGestureLocation = React.useCallback(
-    (gestureLocation: readonly [number, number]) => {
-      const artboardContainer = artboardContainerRef.current;
-      const panGestureTarget = panGestureTargetRef.current;
-      if (artboardContainer == null || panGestureTarget == null) {
-        return null;
-      }
-      const artboardOffsetFromGestureTarget = (() => {
-        const out = vec2.fromLeftTop(artboardContainer.getBoundingClientRect());
-        vec2.sub(
-          out,
-          out,
-          vec2.fromLeftTop(panGestureTarget.getBoundingClientRect())
-        );
-        return out;
-      })();
-      const clientPositionInArtboard = vec2.sub(
-        vec2.create(),
-        gestureLocation,
-        artboardOffsetFromGestureTarget
-      );
-      return locationFromClientPosition(clientPositionInArtboard);
-    },
-    [locationFromClientPosition]
-  );
 
   const onArtboardPanStart = React.useCallback(
     (gestureState: PanEvent) => {
       bcrRef.current = gestureState.currentTarget.getBoundingClientRect();
-      const pt = locationFromClientPosition(gestureState.xy);
       if (interactionMode === "direct") {
-        const artboardLocation = artboardLocationFromPanGestureLocation(
-          gestureState.xy
-        );
-        if (artboardLocation != null) {
-          setCursorPosition(artboardLocation);
-        }
+        setCursorClientPosition(gestureState.xy);
         setButtonPressed(1, true);
       }
-      prevPositionRef.current = pt;
+      prevPositionRef.current = gestureState.xy;
     },
-    [
-      artboardLocationFromPanGestureLocation,
-      locationFromClientPosition,
-      interactionMode,
-      setButtonPressed,
-      setCursorPosition,
-    ]
+    [interactionMode, setButtonPressed, setCursorClientPosition]
   );
 
   const onArtboardPan = React.useCallback(
     (gestureState: PanEvent) => {
-      // kinda complicated: trying to avoid doing this transform on every
-      // gesture - only doing it on direct interactions. that means that
-      // `scaledPointInGestureTarget` and `previousPositionRef` will be scaled
-      // to artboard units, but will be relative to the origin of the "artboard
-      // stage".
-      const scaledPointInGestureTarget = locationFromClientPosition(
-        gestureState.xy
-      );
       if (interactionMode === "direct") {
-        const artboardLocation = artboardLocationFromPanGestureLocation(
-          gestureState.xy
-        );
-        if (artboardLocation != null) {
-          setCursorPosition(artboardLocation);
-        }
+        setCursorClientPosition(gestureState.xy);
       } else {
         const delta =
           prevPositionRef.current == null
             ? null
-            : ([
-                scaledPointInGestureTarget[0] - prevPositionRef.current[0],
-                scaledPointInGestureTarget[1] - prevPositionRef.current[1],
-              ] as [number, number]);
+            : vec2.sub(vec2.create(), gestureState.xy, prevPositionRef.current);
         if (delta != null) {
-          moveCursorPosition(delta);
+          moveCursorClientPosition(delta);
         }
       }
-      prevPositionRef.current = scaledPointInGestureTarget;
+      prevPositionRef.current = gestureState.xy;
     },
-    [
-      artboardLocationFromPanGestureLocation,
-      locationFromClientPosition,
-      moveCursorPosition,
-      interactionMode,
-      setCursorPosition,
-    ]
+    [interactionMode, moveCursorClientPosition, setCursorClientPosition]
   );
 
   const { bind } = usePan({
@@ -730,37 +641,9 @@ function useEditorPanGesture({
       if (interactionMode !== "direct") {
         return;
       }
-      const artboardLocation = artboardLocationFromPanGestureLocation(xy);
-      if (artboardLocation == null) {
-        return;
-      }
-      setCursorPosition(artboardLocation);
+      setCursorClientPosition(xy);
     },
   });
 
-  return { bindHandlers: bind, panGestureTargetRef, artboardContainerRef };
-}
-
-function useArtboardClientTransform({
-  spriteSize,
-  artboardClientSize,
-}: {
-  spriteSize: M.PixelVec2;
-  artboardClientSize: ReadonlyVec2;
-}): [ReadonlyMat2d] {
-  return [
-    useCustomCompareMemo(
-      () => {
-        const out = mat2d.create();
-        mat2d.fromScaling(
-          out,
-          vec2.div(vec2.create(), spriteSize, artboardClientSize)
-        );
-        return out;
-      },
-      [spriteSize, artboardClientSize],
-      ([prevSize, ...prevRest], [nextSize, ...nextRest]) =>
-        arrayEquals(prevSize, nextSize) && arrayEquals(prevRest, nextRest)
-    ),
-  ];
+  return { bindHandlers: bind, artboardContainerRef };
 }

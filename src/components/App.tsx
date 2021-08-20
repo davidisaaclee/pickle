@@ -5,11 +5,7 @@ import { vec2 } from "../utility/gl-matrix";
 import Editor from "./Editor";
 import { reducer, initialState, selectors, actions } from "./reducer";
 import absurd from "../utility/absurd";
-import arrayEquals from "../utility/arrayEquals";
-
-function tripleEq<T>(a: T, b: T) {
-  return a === b;
-}
+import { Comparator } from "../utility/Comparator";
 
 interface ConsoleOverride<T> {
   log: (...args: any[]) => T;
@@ -35,37 +31,6 @@ export function useConsoleOverrides<T = void>(
 
   return log;
 }
-
-type Comparator<T> = (a: T, b: T) => boolean;
-type FlattenComparators = (<A>(
-  c: readonly [Comparator<A>]
-) => Comparator<readonly [A]>) &
-  (<A, B>(
-    c: readonly [Comparator<A>, Comparator<B>]
-  ) => Comparator<readonly [A, B]>) &
-  (<A, B, C>(
-    c: readonly [Comparator<A>, Comparator<B>, Comparator<C>]
-  ) => Comparator<readonly [A, B, C]>) &
-  (<A, B, C, D>(
-    c: readonly [Comparator<A>, Comparator<B>, Comparator<C>, Comparator<D>]
-  ) => Comparator<readonly [A, B, C, D]>);
-
-const flattenComparators: FlattenComparators = (
-  comparators: readonly Comparator<any>[]
-): Comparator<readonly any[]> => {
-  return (left, right) => {
-    if (left.length !== right.length) {
-      throw new Error("Length mismatch");
-    }
-
-    for (let i = 0; i < left.length; i++) {
-      if (!comparators[i](left[i], right[i])) {
-        return false;
-      }
-    }
-    return true;
-  };
-};
 
 export default function App() {
   const [state, dispatch] = React.useReducer(reducer, initialState);
@@ -102,7 +67,7 @@ export default function App() {
       }
     },
     [state.activeColor, state.activeTool],
-    flattenComparators([arrayEquals, tripleEq])
+    Comparator.flatten([Comparator.arrayEquals, Comparator.equals])
   );
 
   const beginPaint = useCustomCompareCallback(
@@ -122,7 +87,11 @@ export default function App() {
       }
     },
     [paintPixels, state.activeTool, state.activeColor],
-    flattenComparators([tripleEq, tripleEq, arrayEquals])
+    Comparator.flatten([
+      Comparator.equals,
+      Comparator.equals,
+      Comparator.arrayEquals,
+    ])
   );
 
   const _setActiveColor = React.useCallback(
