@@ -214,6 +214,10 @@ export const useDoubleTapGesture = makeGestureHook<
     };
   },
   onPointerEvent({ internalState, event, eventType }) {
+    if (!["pointerup", "pointerdown"].includes(eventType)) {
+      return null;
+    }
+
     const recentTaps = internalState.recentTaps.filter(
       (e) => +e.timestamp - Date.now() < 1000
     );

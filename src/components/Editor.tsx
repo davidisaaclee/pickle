@@ -94,6 +94,9 @@ export default function Editor({
     "cursor" | "direct"
   >("cursor");
 
+  const [shouldAcceptTransformMouseInput, setShouldAcceptTransformMouseInput] =
+    React.useState(false);
+
   React.useEffect(() => {
     if (applyEditsAcrossSprites) {
       document.body.classList.add(styles.mapEditsMode);
@@ -141,6 +144,7 @@ export default function Editor({
     setCursorClientPosition,
     moveCursorClientPosition,
     setClientArtboardTransform,
+    forceTransform: shouldAcceptTransformMouseInput,
   });
 
   useHotkeyButtonPresses({ isButtonPressed, setButtonPressed });
@@ -194,13 +198,11 @@ export default function Editor({
     []
   );
 
-  const [shouldAcceptTransformMouseInput, setShouldAcceptTransformMouseInput] =
-    React.useState(false);
-
   React.useEffect(() => {
     const keyDownListener = (event: KeyboardEvent) => {
       if (event.key === " ") {
         event.preventDefault();
+        event.stopPropagation();
         setShouldAcceptTransformMouseInput(true);
       }
     };
@@ -211,13 +213,19 @@ export default function Editor({
       }
     };
 
-    document.addEventListener("keydown", keyDownListener);
-    document.addEventListener("keyup", keyUpListener);
+    if (shouldAcceptTransformMouseInput) {
+      document.addEventListener("keyup", keyUpListener);
+    } else {
+      document.addEventListener("keydown", keyDownListener);
+    }
     return () => {
-      document.removeEventListener("keydown", keyDownListener);
-      document.removeEventListener("keyup", keyUpListener);
+      if (shouldAcceptTransformMouseInput) {
+        document.removeEventListener("keyup", keyUpListener);
+      } else {
+        document.removeEventListener("keydown", keyDownListener);
+      }
     };
-  }, [zoomArtboard]);
+  }, [zoomArtboard, shouldAcceptTransformMouseInput]);
 
   React.useEffect(() => {
     const wheelListener = (event: WheelEvent) => {
@@ -676,6 +684,7 @@ function useEditorPanGesture({
   moveCursorClientPosition,
   interactionMode,
   setClientArtboardTransform,
+  forceTransform,
 }: {
   setButtonPressed: (mask: number, isPressed: boolean) => void;
   setCursorClientPosition: (nextPosition: ReadonlyVec2) => void;
@@ -684,6 +693,7 @@ function useEditorPanGesture({
   setClientArtboardTransform: React.Dispatch<
     React.SetStateAction<ReadonlyMat2d>
   >;
+  forceTransform: boolean;
 }): {
   bindHandlers: () => any;
   artboardContainerRef: React.Ref<HTMLDivElement>;
@@ -702,13 +712,19 @@ function useEditorPanGesture({
       (phase, state) => {
         if (phase !== "active") {
           prevPositionRef.current = null;
+          prevTransformPointersRef.current = {};
           return;
         }
+
         const pointerStates = Object.keys(state.pointers).map(
           (k) => state.pointers[k]
         );
 
-        if (pointerStates.length === 1) {
+        const shouldMoveCursor = !forceTransform && pointerStates.length === 1;
+        const shouldTransformViewport =
+          forceTransform || pointerStates.length > 1;
+
+        if (shouldMoveCursor) {
           const pointerState = pointerStates[0];
           bcrRef.current = pointerState.currentTarget.getBoundingClientRect();
           if (interactionMode === "direct") {
@@ -733,7 +749,7 @@ function useEditorPanGesture({
           prevPositionRef.current = null;
         }
 
-        if (pointerStates.length === 2) {
+        if (shouldTransformViewport) {
           const prevPointerPositions = prevTransformPointersRef.current;
 
           const groupedPointerPositions = (() => {
