@@ -124,7 +124,6 @@ export default function Editor({
   );
 
   const {
-    absoluteCursorPixelPosition,
     cursorPixelPosition,
     moveCursorClientPosition,
     isButtonPressed,
@@ -488,7 +487,6 @@ function useCursor({
   setCursorClientPosition: React.Dispatch<React.SetStateAction<ReadonlyVec2>>;
 }): {
   moveCursorClientPosition: (delta: ReadonlyVec2) => void;
-  absoluteCursorPixelPosition: ReadonlyVec2;
   cursorPixelPosition: M.ReadonlyPixelVec2;
   isButtonPressed: (queryMask: number) => boolean;
   setButtonPressed: (mask: number, isPressed: boolean) => void;
@@ -524,10 +522,6 @@ function useCursor({
       arrayEquals(prevPos, nextPos) && arrayEquals(prevDeps, nextDeps)
   );
 
-  const absoluteCursorPixelPosition = cursorClientPosition.map(
-    Math.floor
-  ) as ReadonlyVec2;
-
   const moveCursorClientPosition = React.useCallback(
     (delta: ReadonlyVec2) => {
       setCursorClientPosition((prev) => vec2.add(vec2.create(), prev, delta));
@@ -537,7 +531,6 @@ function useCursor({
 
   return {
     moveCursorClientPosition,
-    absoluteCursorPixelPosition,
     cursorPixelPosition,
     isButtonPressed: (buttonNumber: number) =>
       !!((1 << (buttonNumber - 1)) & buttonMask),
