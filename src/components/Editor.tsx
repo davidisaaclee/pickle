@@ -151,7 +151,6 @@ export default function Editor({
 
   const cursorHighlightStyle = useCursorHighlightStyle({
     activeColor,
-    absoluteCursorPixelPosition,
     cursorPixelPosition,
     activeSprite,
   });
@@ -421,12 +420,10 @@ function dataUriForSpriteSheet(
 
 function useCursorHighlightStyle({
   activeColor,
-  absoluteCursorPixelPosition,
   cursorPixelPosition,
   activeSprite,
 }: {
   activeColor: M.PixelContent;
-  absoluteCursorPixelPosition: ReadonlyVec2;
   cursorPixelPosition: M.ReadonlyPixelVec2;
   activeSprite: M.Sprite;
 }) {
@@ -434,7 +431,7 @@ function useCursorHighlightStyle({
     (): React.CSSProperties => {
       const [spriteWidth, spriteHeight] = M.Sprite.getSize(activeSprite);
       return {
-        ...vec2.toLeftTop(absoluteCursorPixelPosition),
+        ...vec2.toLeftTop(cursorPixelPosition),
         backgroundColor: rgbaToCss(activeColor),
         width: `${100 / spriteWidth}%`,
         height: `${100 / spriteHeight}%`,
@@ -443,19 +440,13 @@ function useCursorHighlightStyle({
           : "hidden",
       };
     },
-    [
-      activeColor,
-      absoluteCursorPixelPosition,
-      cursorPixelPosition,
-      activeSprite,
-    ],
+    [activeColor, cursorPixelPosition, activeSprite],
     (
-      [prevColor, prevAbsCursorPos, prevCursorPos, ...prevRest],
-      [nextColor, nextAbsCursorPos, nextCursorPos, ...nextRest]
+      [prevColor, prevAbsCursorPos, ...prevRest],
+      [nextColor, nextAbsCursorPos, ...nextRest]
     ) =>
       arrayEquals(prevColor, nextColor) &&
       vec2.equals(prevAbsCursorPos, nextAbsCursorPos) &&
-      vec2.equals(prevCursorPos, nextCursorPos) &&
       arrayEquals(prevRest, nextRest)
   );
 }
