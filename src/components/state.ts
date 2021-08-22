@@ -11,7 +11,7 @@ export interface State {
     present: HistoryItem;
     future: Array<HistoryItem>;
   };
-  activeTool: M.Tool;
+  activeTool: M.Tool | null;
   activeColor: M.PixelContent;
   applyEditsAcrossSprites: boolean;
 }

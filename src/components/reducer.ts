@@ -14,7 +14,7 @@ export const initialState: State = {
     },
     future: [],
   },
-  activeTool: "pen",
+  activeTool: null,
   activeColor: [41, 208, 208, 0xff],
   applyEditsAcrossSprites: false,
 };
@@ -32,7 +32,7 @@ export const actions = {
     createAction<{ offset: M.ReadonlyPixelVec2 }>("translateSprite"),
   pickColorAtLocation: createAction<M.ReadonlyPixelVec2>("pickColorAtLocation"),
   pushHistory: createAction("pushHistory"),
-  setActiveTool: createAction<M.Tool>("setActiveTool"),
+  setActiveTool: createAction<M.Tool | null>("setActiveTool"),
   setActiveColor: createAction<M.PixelContent>("setActiveColor"),
   undo: createAction("undo"),
   redo: createAction("redo"),

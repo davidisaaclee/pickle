@@ -10,6 +10,8 @@ const _toolSet = {
   pen: true,
   eraser: true,
   bucket: true,
+  grab: true,
+  pickColor: true,
 } as const;
 
 export type Tool = keyof typeof _toolSet;
@@ -17,7 +19,7 @@ export type Tool = keyof typeof _toolSet;
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const Tool = {
   allTools() {
-    return Object.keys(_toolSet);
+    return Object.keys(_toolSet) as Tool[];
   },
 };
 

@@ -1,6 +1,7 @@
 .container {
-  display: flex;
-  flex-flow: column;
+  display: grid;
+  grid-template: 30px 60px / 30px 60px;
+  grid-gap: 8px;
 }
 
 .button {
@@ -14,12 +15,6 @@
   background-color: white;
   user-select: none;
   touch-action: none;
-
-  margin-top: 8px;
-}
-
-.button:first-child {
-  margin-top: 0;
 }
 
 .primaryButton {
@@ -36,6 +31,8 @@
 .secondaryButton {
   font-size: 13px;
   background-color: gray;
-  width: 60px;
-  height: 30px;
+}
+
+.container > *:nth-child(3) {
+  writing-mode: vertical-lr;
 }

@@ -2,7 +2,7 @@ import * as React from "react";
 import classNames from "classnames";
 import { useCustomCompareMemo } from "use-custom-compare";
 import Artboard from "../components/Artboard";
-import Toolbar from "../components/Toolbar";
+// import Toolbar from "../components/Toolbar";
 import Menubar from "../components/Menubar";
 import Palette from "../components/Palette";
 import Timeline from "../components/Timeline";
@@ -22,20 +22,17 @@ import {
 import useOnChange from "../utility/useOnChange";
 import { Comparator } from "../utility/Comparator";
 
-const primaryButtons = {
-  pen: { title: "Paint", key: "paint" },
-  eraser: { title: "Erase", key: "erase" },
-  bucket: { title: "Fill", key: "fill" },
-} as const;
-const secondaryButtons = {
-  pen: { title: "Pick color", key: "pick-color" },
-  eraser: { title: "---", key: null },
-  bucket: { title: "Move", key: "move" },
-} as const;
+const TOOL_KEYMAPS: Array<[string, M.Tool]> = [
+  ["1", "pen"],
+  ["2", "eraser"],
+  ["3", "bucket"],
+  ["4", "grab"],
+  ["5", "pickColor"],
+];
 
 interface Props {
-  setActiveTool: (tool: M.Tool) => void;
-  activeTool: M.Tool;
+  setActiveTool: (tool: M.Tool | null) => void;
+  activeTool: M.Tool | null;
 
   animation: M.Animation;
   activeSprite: M.Sprite;
@@ -43,8 +40,10 @@ interface Props {
   activeColor: M.PixelContent;
   setActiveColor: (color: M.PixelContent) => void;
 
-  beginPaint: (artboardPos: M.ReadonlyPixelVec2) => void;
-  paintPixels: (artboardPos: M.ReadonlyPixelVec2) => void;
+  willPerformUndoableEdit: () => void;
+  paintPixels: (artboardPos: M.ReadonlyPixelVec2[]) => void;
+  erasePixels: (artboardPos: M.ReadonlyPixelVec2[]) => void;
+  fillAreaStartingAt: (artboardPos: M.ReadonlyPixelVec2) => void;
   translateSprite: (offset: M.ReadonlyPixelVec2) => void;
   pickColorAtLocation: (loc: M.ReadonlyPixelVec2) => void;
 
@@ -62,14 +61,15 @@ interface Props {
 }
 
 export default function Editor({
-  setActiveTool,
   activeTool,
+  setActiveTool,
   activeSprite,
   animation,
   activeColor,
   setActiveColor,
-  beginPaint,
   paintPixels,
+  fillAreaStartingAt,
+  erasePixels,
   translateSprite,
   undo,
   redo,
@@ -80,10 +80,11 @@ export default function Editor({
   currentFrameIndex,
   copyFrame,
   pasteFrame,
+  willPerformUndoableEdit,
   pickColorAtLocation,
   applyEditsAcrossSprites,
-  setApplyEditsAcrossSprites,
-}: Props) {
+}: // setApplyEditsAcrossSprites,
+Props) {
   const [cursorClientPosition, setCursorClientPosition] =
     React.useState<ReadonlyVec2>([0, 0]);
 
@@ -109,36 +110,32 @@ export default function Editor({
     sprites: animation.sprites,
   });
 
-  const [onCursorChanged] = useOnCursorChangedCallback({
-    beginPaint,
-    paintPixels,
-    pickColorAtLocation,
-    translateSprite,
-    activeTool,
-  });
-
   const artboardClientTransform = useCustomCompareMemo(
     () => mat2d.invert(mat2d.create(), clientArtboardTransform),
     [clientArtboardTransform],
     Comparator.flatten([mat2d.equals])
   );
 
-  const {
-    cursorPixelPosition,
-    moveCursorClientPosition,
-    isButtonPressed,
-    setButtonPressed,
-  } = useCursor({
+  const [onCursorChanged] = useOnCursorChangedCallback({
+    willPerformUndoableEdit,
+    paintPixels,
+    erasePixels,
+    fillAreaStartingAt,
+    pickColorAtLocation,
+    translateSprite,
+  });
+
+  const { cursorPixelPosition, moveCursorClientPosition } = useCursor({
     cursorClientPosition,
     setCursorClientPosition,
     transform: artboardClientTransform,
     onCursorChanged,
+    activeTool,
   });
 
   const artboardStageRef = React.useRef<React.ElementRef<"div">>(null);
 
   const { bindHandlers: bindDrag, artboardContainerRef } = useEditorPanGesture({
-    setButtonPressed,
     interactionMode,
     setCursorClientPosition,
     moveCursorClientPosition,
@@ -146,7 +143,7 @@ export default function Editor({
     forceTransform: shouldAcceptTransformMouseInput,
   });
 
-  useHotkeyButtonPresses({ isButtonPressed, setButtonPressed });
+  useHotkeyButtonPresses({ activeTool, setActiveTool });
 
   const cursorHighlightStyle = useCursorHighlightStyle({
     activeColor,
@@ -308,13 +305,6 @@ export default function Editor({
         <div className={styles.colorGroup}>
           <Palette onSelectColor={setActiveColor} selectedColor={activeColor} />
         </div>
-        <Toolbar
-          className={styles.toolbar}
-          activeTool={activeTool}
-          onSelectTool={setActiveTool}
-          applyEditsAcrossSprites={applyEditsAcrossSprites}
-          setApplyEditsAcrossSprites={setApplyEditsAcrossSprites}
-        />
         <Menubar
           className={styles.menubar}
           onTapButton={(button) => {
@@ -343,20 +333,12 @@ export default function Editor({
         {interactionMode === "cursor" && (
           <CursorModeButtons
             className={styles.cursorModeButtons}
-            primaryButtonTitle={primaryButtons[activeTool].title}
-            secondaryButtonTitle={secondaryButtons[activeTool].title}
+            toolSet={["bucket", "pickColor", "eraser", "pen"]}
             onButtonChanged={(isDown, buttonType) => {
-              switch (buttonType) {
-                case "primary":
-                  setButtonPressed(1, isDown);
-                  break;
-
-                case "secondary":
-                  setButtonPressed(2, isDown);
-                  break;
-
-                default:
-                  return absurd(buttonType);
+              if (isDown) {
+                setActiveTool(buttonType);
+              } else {
+                setActiveTool(null);
               }
             }}
           />
@@ -473,7 +455,7 @@ function useExportAsFileCallback({
 
 type CursorState = {
   position: M.ReadonlyPixelVec2;
-  buttonMask: number;
+  activeTool: M.Tool | null;
 };
 
 type OnCursorChangedCallback = (
@@ -486,19 +468,17 @@ function useCursor({
   transform,
   cursorClientPosition,
   setCursorClientPosition,
+  activeTool,
 }: {
   onCursorChanged: OnCursorChangedCallback;
   transform: ReadonlyMat2d;
   cursorClientPosition: ReadonlyVec2;
   setCursorClientPosition: React.Dispatch<React.SetStateAction<ReadonlyVec2>>;
+  activeTool: M.Tool | null;
 }): {
   moveCursorClientPosition: (delta: ReadonlyVec2) => void;
   cursorPixelPosition: M.ReadonlyPixelVec2;
-  isButtonPressed: (queryMask: number) => boolean;
-  setButtonPressed: (mask: number, isPressed: boolean) => void;
 } {
-  const [buttonMask, setButtonMask] = React.useState(0);
-
   const artboardCursorPosition = vec2.transformMat2d(
     vec2.create(),
     cursorClientPosition,
@@ -511,19 +491,19 @@ function useCursor({
   ];
 
   useOnChange(
-    ([prevCursorPixelPosition, prevButtonMask]) => {
+    ([prevCursorPixelPosition, prevTool]) => {
       onCursorChanged(
         {
           position: cursorPixelPosition,
-          buttonMask,
+          activeTool,
         },
         {
           position: prevCursorPixelPosition,
-          buttonMask: prevButtonMask,
+          activeTool: prevTool,
         }
       );
     },
-    [cursorPixelPosition, buttonMask, onCursorChanged],
+    [cursorPixelPosition, activeTool, onCursorChanged],
     ([prevPos, ...prevDeps], [nextPos, ...nextDeps]) =>
       arrayEquals(prevPos, nextPos) && arrayEquals(prevDeps, nextDeps)
   );
@@ -538,39 +518,34 @@ function useCursor({
   return {
     moveCursorClientPosition,
     cursorPixelPosition,
-    isButtonPressed: (buttonNumber: number) =>
-      !!((1 << (buttonNumber - 1)) & buttonMask),
-    setButtonPressed: (buttonNumber, isPressed: boolean) =>
-      setButtonMask((prev) => {
-        const mask = 1 << (buttonNumber - 1);
-        if (isPressed) {
-          return prev | mask;
-        } else {
-          return prev & ~mask;
-        }
-      }),
   };
 }
 
 function useOnCursorChangedCallback({
-  beginPaint,
+  willPerformUndoableEdit,
   paintPixels,
+  erasePixels,
+  fillAreaStartingAt,
   pickColorAtLocation,
   translateSprite,
-  activeTool,
 }: {
-  beginPaint: (artboardPos: readonly [number, number]) => void;
-  paintPixels: (artboardPos: readonly [number, number]) => void;
-  translateSprite: (offset: readonly [number, number]) => void;
+  willPerformUndoableEdit: () => void;
+  paintPixels: (artboardPos: M.ReadonlyPixelVec2[]) => void;
+  translateSprite: (offset: M.ReadonlyPixelVec2) => void;
   pickColorAtLocation: (loc: M.PixelLocation) => void;
-  activeTool: M.Tool;
+  erasePixels: (artboardPos: M.ReadonlyPixelVec2[]) => void;
+  fillAreaStartingAt: (artboardPos: M.ReadonlyPixelVec2) => void;
 }): [OnCursorChangedCallback] {
   return [
     React.useCallback(
       (
-        { position, buttonMask },
-        { position: prevPosition, buttonMask: prevButtonMask }
+        { position, activeTool },
+        { position: prevPosition, activeTool: prevTool }
       ) => {
+        if (activeTool == null) {
+          return;
+        }
+
         const [prevCursorX, prevCursorY] = prevPosition;
         const cursorPixelPosition = position.map(Math.floor) as [
           number,
@@ -581,80 +556,83 @@ function useOnCursorChangedCallback({
           number
         ];
         if (
-          prevButtonMask === buttonMask &&
+          activeTool === prevTool &&
           arrayEquals(cursorPixelPosition, prevCursorPixelPosition)
         ) {
           // avoid causing updates when cursor has not meaningfully changed
           return;
         }
 
-        if (!!(buttonMask & 0b1)) {
-          if (!(prevButtonMask & 0b1)) {
-            // button was just pressed
-            beginPaint(position);
-          }
-          paintPixels(position);
+        if (activeTool != null && activeTool !== prevTool) {
+          willPerformUndoableEdit();
         }
-        if (!!(buttonMask & 0b10)) {
-          switch (activeTool) {
-            case "pen":
-              pickColorAtLocation(cursorPixelPosition);
-              break;
-            case "eraser":
-              pickColorAtLocation(cursorPixelPosition);
-              break;
-            case "bucket":
-              const [cursorX, cursorY] = cursorPixelPosition;
-              const offset = [
-                cursorX - prevCursorX,
-                cursorY - prevCursorY,
-              ] as const;
-              translateSprite(offset);
-              break;
-            default:
-              return absurd(activeTool);
-          }
+
+        switch (activeTool) {
+          case "pen":
+            paintPixels([cursorPixelPosition]);
+            break;
+
+          case "eraser":
+            erasePixels([cursorPixelPosition]);
+            break;
+
+          case "bucket":
+            fillAreaStartingAt(cursorPixelPosition);
+            break;
+
+          case "grab":
+            const [cursorX, cursorY] = cursorPixelPosition;
+            const offset = [
+              cursorX - prevCursorX,
+              cursorY - prevCursorY,
+            ] as const;
+            translateSprite(offset);
+            break;
+
+          case "pickColor":
+            pickColorAtLocation(cursorPixelPosition);
+            break;
+
+          default:
+            return absurd(activeTool);
         }
       },
       [
-        activeTool,
-        beginPaint,
         paintPixels,
         pickColorAtLocation,
         translateSprite,
+        erasePixels,
+        fillAreaStartingAt,
       ]
     ),
   ];
 }
 
 function useHotkeyButtonPresses({
-  isButtonPressed,
-  setButtonPressed,
+  setActiveTool,
+  activeTool,
 }: {
-  isButtonPressed: (queryMask: number) => boolean;
-  setButtonPressed: (mask: number, isPressed: boolean) => void;
+  setActiveTool: (tool: M.Tool | null) => void;
+  activeTool: M.Tool | null;
 }) {
   const globalKeyDownHandler = React.useCallback(
     (event: KeyboardEvent) => {
-      if (event.key === "x" && !isButtonPressed(1)) {
-        setButtonPressed(1, true);
-      }
-      if (event.key === "c" && !isButtonPressed(2)) {
-        setButtonPressed(2, true);
+      for (const [matchKey, tool] of TOOL_KEYMAPS) {
+        if (event.key === matchKey && activeTool !== tool) {
+          console.log("setting active tool", tool);
+          setActiveTool(tool);
+        }
       }
     },
-    [isButtonPressed, setButtonPressed]
+    [setActiveTool, activeTool]
   );
   const globalKeyUpHandler = React.useCallback(
     (event: KeyboardEvent) => {
-      if (event.key === "x") {
-        setButtonPressed(1, false);
-      }
-      if (event.key === "c") {
-        setButtonPressed(2, false);
+      if (TOOL_KEYMAPS.map(([matchKey]) => matchKey).includes(event.key)) {
+        setActiveTool(null);
       }
     },
-    [setButtonPressed]
+    [setActiveTool]
   );
 
   React.useEffect(() => {
@@ -669,14 +647,12 @@ function useHotkeyButtonPresses({
 }
 
 function useEditorPanGesture({
-  setButtonPressed,
   setCursorClientPosition,
   moveCursorClientPosition,
   interactionMode,
   setClientArtboardTransform,
   forceTransform,
 }: {
-  setButtonPressed: (mask: number, isPressed: boolean) => void;
   setCursorClientPosition: (nextPosition: ReadonlyVec2) => void;
   moveCursorClientPosition: (delta: ReadonlyVec2) => void;
   interactionMode: "direct" | "cursor";
@@ -704,7 +680,8 @@ function useEditorPanGesture({
           prevPositionRef.current = null;
           prevTransformPointersRef.current = {};
           if (interactionMode === "direct") {
-            setButtonPressed(1, false);
+            // TODO
+            // setButtonPressed(1, false);
           }
           return;
         }
@@ -722,7 +699,8 @@ function useEditorPanGesture({
           bcrRef.current = pointerState.currentTarget.getBoundingClientRect();
           if (interactionMode === "direct") {
             setCursorClientPosition(pointerState.position);
-            setButtonPressed(1, true);
+            // TODO
+            // setButtonPressed(1, true);
           } else {
             const delta =
               prevPositionRef.current == null
@@ -777,7 +755,6 @@ function useEditorPanGesture({
         forceTransform,
         interactionMode,
         moveCursorClientPosition,
-        setButtonPressed,
         setClientArtboardTransform,
         setCursorClientPosition,
       ]

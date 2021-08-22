@@ -1,10 +1,12 @@
 import * as React from "react";
 import * as M from "../model";
-import { useCustomCompareCallback } from "use-custom-compare";
+import {
+  useCustomCompareCallback,
+  useCustomCompareMemo,
+} from "use-custom-compare";
 import { vec2 } from "../utility/gl-matrix";
 import Editor from "./Editor";
 import { reducer, initialState, selectors, actions } from "./reducer";
-import absurd from "../utility/absurd";
 import { Comparator } from "../utility/Comparator";
 
 interface ConsoleOverride<T> {
@@ -40,66 +42,53 @@ export default function App() {
 
   const activeSprite = selectors.activeSprite(state);
 
-  const paintPixels = useCustomCompareCallback(
-    (artboardPos: readonly [number, number]) => {
-      const loc = vec2.toTuple(vec2.floor(vec2.create(), artboardPos));
-
-      if (state.activeTool === "pen" || state.activeTool === "eraser") {
-        const content =
-          state.activeTool === "pen"
-            ? state.activeColor
-            : ([0, 0, 0, 0] as M.PixelContent);
-        dispatchRef.current(
-          actions.paintPixels({
-            locations: [loc],
-            content,
-          })
-        );
-      } else if (state.activeTool === "bucket") {
-        dispatchRef.current(
-          actions.paintBucket({
-            location: loc,
-            content: state.activeColor,
-          })
-        );
-      } else {
-        return absurd(state.activeTool);
-      }
+  const replacePixels = React.useCallback(
+    (content: M.PixelContent) => (locations: M.ReadonlyPixelVec2[]) => {
+      dispatchRef.current(
+        actions.paintPixels({
+          locations: locations.map((loc) =>
+            vec2.toTuple(vec2.floor(vec2.create(), loc))
+          ),
+          content,
+        })
+      );
     },
-    [state.activeColor, state.activeTool],
+    []
+  );
+
+  const paintPixels = useCustomCompareMemo(
+    () => replacePixels(state.activeColor),
+    [state.activeColor, replacePixels],
     Comparator.flatten([Comparator.arrayEquals, Comparator.equals])
   );
-
-  const beginPaint = useCustomCompareCallback(
-    (artboardPos: readonly [number, number]) => {
-      const loc = vec2.toTuple(vec2.floor(vec2.create(), artboardPos));
-      if (state.activeTool === "bucket") {
-        dispatchRef.current(actions.pushHistory());
-        dispatchRef.current(
-          actions.paintBucket({
-            location: loc,
-            content: state.activeColor,
-          })
-        );
-      } else {
-        dispatchRef.current(actions.pushHistory());
-        paintPixels(loc);
-      }
-    },
-    [paintPixels, state.activeTool, state.activeColor],
-    Comparator.flatten([
-      Comparator.equals,
-      Comparator.equals,
-      Comparator.arrayEquals,
-    ])
+  const erasePixels = React.useMemo(
+    () => replacePixels([0, 0, 0, 0]),
+    [replacePixels]
   );
+
+  const fillAreaStartingAt = useCustomCompareCallback(
+    (location: M.ReadonlyPixelVec2) => {
+      dispatchRef.current(
+        actions.paintBucket({
+          location,
+          content: state.activeColor,
+        })
+      );
+    },
+    [state.activeColor],
+    Comparator.flatten([Comparator.arrayEquals])
+  );
+
+  const willPerformUndoableEdit = React.useCallback(() => {
+    dispatchRef.current(actions.pushHistory());
+  }, []);
 
   const _setActiveColor = React.useCallback(
     (color: M.PixelContent) => dispatch(actions.setActiveColor(color)),
     [dispatch]
   );
 
-  const _setActiveTool = React.useCallback((tool: M.Tool) => {
+  const _setActiveTool = React.useCallback((tool: M.Tool | null) => {
     dispatchRef.current(actions.setActiveTool(tool));
   }, []);
 
@@ -132,8 +121,10 @@ export default function App() {
           setActiveColor: _setActiveColor,
           activeSprite,
           setPlayhead: (index) => dispatch(actions.movePlayhead(index)),
-          beginPaint,
+          willPerformUndoableEdit,
           paintPixels,
+          erasePixels,
+          fillAreaStartingAt,
           translateSprite,
           undo: () => dispatch(actions.undo()),
           redo: () => dispatch(actions.redo()),
