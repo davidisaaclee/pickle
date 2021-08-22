@@ -176,7 +176,13 @@ export default function Editor({
     setCursorClientPosition(stageCenter);
   }, []);
 
-  React.useLayoutEffect(revertToDefaultArtboardTransform, []);
+  const revertToDefaultArtboardTransformRef = React.useRef(
+    revertToDefaultArtboardTransform
+  );
+  React.useLayoutEffect(
+    () => revertToDefaultArtboardTransformRef.current(),
+    []
+  );
 
   const zoomArtboard = React.useCallback(
     (amount: number, center: ReadonlyVec2) => {
@@ -768,6 +774,7 @@ function useEditorPanGesture({
         }
       },
       [
+        forceTransform,
         interactionMode,
         moveCursorClientPosition,
         setButtonPressed,
