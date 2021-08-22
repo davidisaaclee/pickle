@@ -713,6 +713,9 @@ function useEditorPanGesture({
         if (phase !== "active") {
           prevPositionRef.current = null;
           prevTransformPointersRef.current = {};
+          if (interactionMode === "direct") {
+            setButtonPressed(1, false);
+          }
           return;
         }
 
