@@ -12,6 +12,7 @@
     "gl-matrix": "^3.3.0",
     "hammerjs": "^2.0.8",
     "lodash": "^4.17.21",
+    "nudged": "^2.0.0",
     "react": "^17.0.2",
     "react-cool-dimensions": "^2.0.7",
     "react-dom": "^17.0.2",

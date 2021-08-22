@@ -13,7 +13,12 @@ import { ReadonlyVec2, ReadonlyMat2d, mat2d, vec2 } from "../utility/gl-matrix";
 import arrayEquals from "../utility/arrayEquals";
 import absurd from "../utility/absurd";
 import { rgbaToCss } from "../utility/colors";
-import usePan, { PanEvent, combineBindHandlers } from "../utility/usePan";
+import {
+  useMultiFingerPan,
+  useDoubleTapGesture,
+  combineBindHandlers,
+  OnGestureStateChange,
+} from "../utility/useGesture";
 import useOnChange from "../utility/useOnChange";
 import { Comparator } from "../utility/Comparator";
 
@@ -135,6 +140,7 @@ export default function Editor({
     interactionMode,
     setCursorClientPosition,
     moveCursorClientPosition,
+    setClientArtboardTransform,
   });
 
   useHotkeyButtonPresses({ isButtonPressed, setButtonPressed });
@@ -146,7 +152,7 @@ export default function Editor({
     activeSprite,
   });
 
-  React.useLayoutEffect(() => {
+  const revertToDefaultArtboardTransform = React.useCallback(() => {
     const out = mat2d.create();
     const artboardStage = artboardStageRef.current;
     if (artboardStage == null) {
@@ -159,7 +165,7 @@ export default function Editor({
     vec2.scale(stageCenter, stageCenter, 0.5);
 
     mat2d.translate(out, out, stageCenter);
-    mat2d.scale(out, out, [10, 10]);
+    mat2d.scale(out, out, [16, 16]); // eyeballed
 
     // half the size of the untransformed artboard :|
     mat2d.translate(out, out, [-8, -8]);
@@ -167,6 +173,8 @@ export default function Editor({
     setClientArtboardTransform(out);
     setCursorClientPosition(stageCenter);
   }, []);
+
+  React.useLayoutEffect(revertToDefaultArtboardTransform, []);
 
   const zoomArtboard = React.useCallback(
     (amount: number, center: ReadonlyVec2) => {
@@ -213,7 +221,7 @@ export default function Editor({
 
   React.useEffect(() => {
     const wheelListener = (event: WheelEvent) => {
-      if (shouldAcceptTransformMouseInput) {
+      if (!shouldAcceptTransformMouseInput) {
         return;
       }
       event.preventDefault();
@@ -228,36 +236,28 @@ export default function Editor({
     };
   }, [zoomArtboard, shouldAcceptTransformMouseInput]);
 
-  const prevTransformPositionRef = React.useRef<ReadonlyVec2 | null>(null);
-  const { bind: bindTransformHandlers } = usePan({
-    onPanStart(event) {
-      prevTransformPositionRef.current = event.xy;
-    },
-    onPanMove(event) {
-      const prevTransformPosition = prevTransformPositionRef.current;
-      if (prevTransformPosition != null) {
-        const delta = vec2.sub(vec2.create(), event.xy, prevTransformPosition);
-        setClientArtboardTransform((prev) => {
-          const out = mat2d.clone(prev);
-          const translate = mat2d.fromTranslation(mat2d.create(), delta);
-          mat2d.mul(out, translate, out);
-          return out;
-        });
+  const onDoubleTapGestureChange: OnGestureStateChange<
+    typeof useDoubleTapGesture
+  > = React.useCallback(
+    (phase, state) => {
+      if (phase !== "active") {
+        return;
       }
-      prevTransformPositionRef.current = event.xy;
+      if (state.becameActiveAt == null) {
+        return;
+      }
+      revertToDefaultArtboardTransform();
     },
-    shouldRespondToEvent(event) {
-      return (
-        shouldAcceptTransformMouseInput ||
-        event.metaKey ||
-        !!(event.buttons & (1 << 2))
-      );
-    },
+    [revertToDefaultArtboardTransform]
+  );
+
+  const { bindHandlers: bindDoubleTap } = useDoubleTapGesture({
+    onGestureStateChange: onDoubleTapGestureChange,
   });
 
-  const bindHandlers = React.useMemo(
-    () => combineBindHandlers([bindTransformHandlers, bindDrag]),
-    [bindTransformHandlers, bindDrag]
+  const bindAllHandlers = React.useMemo(
+    () => combineBindHandlers([bindDrag, bindDoubleTap]),
+    [bindDrag, bindDoubleTap]
   );
 
   return (
@@ -271,7 +271,7 @@ export default function Editor({
             const m = mat2d.invert(mat2d.create(), clientArtboardTransform);
             vec2.transformMat2d(pt, pt, m);
           }}
-          {...bindHandlers()}
+          {...bindAllHandlers()}
         >
           <div
             ref={artboardContainerRef}
@@ -496,7 +496,6 @@ function useCursor({
 } {
   const [buttonMask, setButtonMask] = React.useState(0);
 
-  // TODO: not correct yet – currenttly translation relative to pgae
   const artboardCursorPosition = vec2.transformMat2d(
     vec2.create(),
     cursorClientPosition,
@@ -676,11 +675,15 @@ function useEditorPanGesture({
   setCursorClientPosition,
   moveCursorClientPosition,
   interactionMode,
+  setClientArtboardTransform,
 }: {
   setButtonPressed: (mask: number, isPressed: boolean) => void;
   setCursorClientPosition: (nextPosition: ReadonlyVec2) => void;
   moveCursorClientPosition: (delta: ReadonlyVec2) => void;
   interactionMode: "direct" | "cursor";
+  setClientArtboardTransform: React.Dispatch<
+    React.SetStateAction<ReadonlyMat2d>
+  >;
 }): {
   bindHandlers: () => any;
   artboardContainerRef: React.Ref<HTMLDivElement>;
@@ -688,58 +691,89 @@ function useEditorPanGesture({
   const bcrRef = React.useRef<DOMRect>(new DOMRect());
 
   const prevPositionRef = React.useRef<ReadonlyVec2 | null>(null);
+  const prevTransformPointersRef = React.useRef<{
+    [pointerId: string]: { position: ReadonlyVec2 };
+  }>({});
 
   const artboardContainerRef = React.useRef<React.ElementRef<"div">>(null);
 
-  const onArtboardPanStart = React.useCallback(
-    (gestureState: PanEvent) => {
-      bcrRef.current = gestureState.currentTarget.getBoundingClientRect();
-      if (interactionMode === "direct") {
-        setCursorClientPosition(gestureState.xy);
-        setButtonPressed(1, true);
-      }
-      prevPositionRef.current = gestureState.xy;
-    },
-    [interactionMode, setButtonPressed, setCursorClientPosition]
-  );
-
-  const onArtboardPan = React.useCallback(
-    (gestureState: PanEvent) => {
-      if (interactionMode === "direct") {
-        setCursorClientPosition(gestureState.xy);
-      } else {
-        const delta =
-          prevPositionRef.current == null
-            ? null
-            : vec2.sub(vec2.create(), gestureState.xy, prevPositionRef.current);
-        if (delta != null) {
-          moveCursorClientPosition(delta);
+  const onGestureStateChange: OnGestureStateChange<typeof useMultiFingerPan> =
+    React.useCallback(
+      (phase, state) => {
+        if (phase !== "active") {
+          prevPositionRef.current = null;
+          return;
         }
-      }
-      prevPositionRef.current = gestureState.xy;
-    },
-    [interactionMode, moveCursorClientPosition, setCursorClientPosition]
-  );
+        const pointerStates = Object.keys(state.pointers).map(
+          (k) => state.pointers[k]
+        );
 
-  const { bind } = usePan({
-    onPanStart: onArtboardPanStart,
-    onPanMove: onArtboardPan,
-    onPanEnd() {
-      if (interactionMode === "direct") {
-        setButtonPressed(1, false);
-      }
-    },
-    onPanOver({ xy }) {
-      if (interactionMode !== "direct") {
-        return;
-      }
-      setCursorClientPosition(xy);
-    },
-    shouldRespondToEvent(event) {
-      // only respond to primary mouse button
-      return !!(event.buttons & 1) || event.buttons === 0;
-    },
-  });
+        if (pointerStates.length === 1) {
+          const pointerState = pointerStates[0];
+          bcrRef.current = pointerState.currentTarget.getBoundingClientRect();
+          if (interactionMode === "direct") {
+            setCursorClientPosition(pointerState.position);
+            setButtonPressed(1, true);
+          } else {
+            const delta =
+              prevPositionRef.current == null
+                ? null
+                : vec2.sub(
+                    vec2.create(),
+                    pointerState.position,
+                    prevPositionRef.current
+                  );
+            if (delta != null) {
+              moveCursorClientPosition(delta);
+            }
+          }
 
-  return { bindHandlers: bind, artboardContainerRef };
+          prevPositionRef.current = pointerState.position;
+        } else {
+          prevPositionRef.current = null;
+        }
+
+        if (pointerStates.length === 2) {
+          const prevPointerPositions = prevTransformPointersRef.current;
+
+          const groupedPointerPositions = (() => {
+            const out: Array<[ReadonlyVec2, ReadonlyVec2]> = [];
+            for (const pId of Object.keys(prevPointerPositions)) {
+              if (state.pointers[pId] != null) {
+                out.push([
+                  prevPointerPositions[pId].position,
+                  state.pointers[pId].position,
+                ]);
+              }
+            }
+            return out;
+          })();
+
+          if (groupedPointerPositions.length > 0) {
+            const transform = mat2d.nudgedEstimate(
+              mat2d.create(),
+              groupedPointerPositions
+            );
+            setClientArtboardTransform((prev) =>
+              mat2d.mul(mat2d.create(), transform, prev)
+            );
+          }
+
+          prevTransformPointersRef.current = state.pointers;
+        } else {
+          prevTransformPointersRef.current = {};
+        }
+      },
+      [
+        interactionMode,
+        moveCursorClientPosition,
+        setButtonPressed,
+        setClientArtboardTransform,
+        setCursorClientPosition,
+      ]
+    );
+
+  const { bindHandlers } = useMultiFingerPan({ onGestureStateChange });
+
+  return { bindHandlers, artboardContainerRef };
 }

@@ -7645,6 +7645,11 @@ nth-check@^1.0.2:
   dependencies:
     boolbase "~1.0.0"
 
+nudged@^2.0.0:
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/nudged/-/nudged-2.0.0.tgz#366b81305c803aead004334972787a8da6242649"
+  integrity sha512-eUqrSE1Bw1J8Ipv25wv8RLEwKpdbN+EOP1UdFv0r2c6XGt3xjyqbdbno2wcfF8bCNnuBuJsYEw47sX0Ewl9hkA==
+
 num2fraction@^1.2.2:
   version "1.2.2"
   resolved "https://registry.yarnpkg.com/num2fraction/-/num2fraction-1.2.2.tgz#6f682b6a027a4e9ddfa4564cd2589d1d4e669ede"

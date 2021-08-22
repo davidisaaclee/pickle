@@ -8,6 +8,8 @@ import {
   ReadonlyMat4,
   ReadonlyMat2d,
 } from "gl-matrix";
+import * as nudged from "nudged";
+console.log(nudged);
 
 export * from "gl-matrix";
 
@@ -288,6 +290,29 @@ const extraMat2dMethods = {
     mat2d.translate(out, out, components.translation);
     mat2d.rotate(out, out, components.rotation);
     mat2d.scale(out, out, components.scale);
+    return out;
+  },
+
+  nudgedEstimate(
+    out: Mat2d,
+    pointPairs: Array<[ReadonlyVec2, ReadonlyVec2]>
+  ): Mat2d {
+    const domain = pointPairs.map((p) => p[0]).map(extraVec2Methods.toXY);
+    const range = pointPairs.map((p) => p[1]).map(extraVec2Methods.toXY);
+    const nudgedMatr = nudged.estimate({
+      estimator: "TSR",
+      domain,
+      range,
+    });
+    mat2d.set(
+      out,
+      nudgedMatr.a ?? 0,
+      nudgedMatr.b ?? 0,
+      -nudgedMatr.b ?? 0,
+      nudgedMatr.a ?? 0,
+      nudgedMatr.x ?? 0,
+      nudgedMatr.y ?? 0
+    );
     return out;
   },
 };
