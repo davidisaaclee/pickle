@@ -63,7 +63,7 @@ interface Props {
 
 export default function Editor({
   activeTool,
-  setActiveTool,
+  setActiveTool: _setActiveTool,
   activeSprite,
   animation,
   activeColor,
@@ -84,10 +84,11 @@ export default function Editor({
   willPerformUndoableEdit,
   pickColorAtLocation,
   applyEditsAcrossSprites,
-}: // setApplyEditsAcrossSprites,
-Props) {
+}: Props) {
   const [cursorClientPosition, setCursorClientPosition] =
     React.useState<ReadonlyVec2>([0, 0]);
+
+  const [isApplyingTool, setIsApplyingTool] = React.useState(false);
 
   const [clientArtboardTransform, setClientArtboardTransform] =
     React.useState<ReadonlyMat2d>(() => mat2d.create());
@@ -96,8 +97,34 @@ Props) {
     "cursor" | "direct"
   >("cursor");
 
+  // clear out active tool when changing interaction modes
+  React.useEffect(() => {
+    setActiveTool(null);
+  }, [interactionMode]);
+
   const [shouldAcceptTransformMouseInput, setShouldAcceptTransformMouseInput] =
     React.useState(false);
+
+  const setActiveTool = React.useCallback(
+    (tool: M.Tool | null) => {
+      switch (interactionMode) {
+        case "cursor":
+          _setActiveTool(tool);
+          setIsApplyingTool(true);
+          break;
+
+        case "direct":
+          if (tool != null) {
+            _setActiveTool(tool);
+          }
+          break;
+
+        default:
+          return absurd(interactionMode);
+      }
+    },
+    [interactionMode, _setActiveTool]
+  );
 
   React.useEffect(() => {
     if (applyEditsAcrossSprites) {
@@ -132,6 +159,7 @@ Props) {
     transform: artboardClientTransform,
     onCursorChanged,
     activeTool,
+    isApplyingTool,
   });
 
   const artboardStageRef = React.useRef<React.ElementRef<"div">>(null);
@@ -142,6 +170,7 @@ Props) {
     moveCursorClientPosition,
     setClientArtboardTransform,
     forceTransform: shouldAcceptTransformMouseInput,
+    directModeSetIsApplyingTool: setIsApplyingTool,
   });
 
   useHotkeyButtonPresses({ activeTool, setActiveTool });
@@ -331,19 +360,21 @@ Props) {
             }
           }}
         />
-        {interactionMode === "cursor" && (
-          <CursorModeButtons
-            className={styles.cursorModeButtons}
-            toolSet={["bucket", "pickColor", "eraser", "pen"]}
-            onButtonChanged={(isDown, buttonType) => {
-              if (isDown) {
-                setActiveTool(buttonType);
-              } else {
-                setActiveTool(null);
+        <CursorModeButtons
+          className={styles.cursorModeButtons}
+          toolSet={["bucket", "pickColor", "eraser", "pen"]}
+          selectedTool={activeTool}
+          onButtonChanged={(isDown, buttonType) => {
+            if (isDown) {
+              setActiveTool(buttonType);
+            } else {
+              if (interactionMode === "direct") {
+                return;
               }
-            }}
-          />
-        )}
+              setActiveTool(null);
+            }
+          }}
+        />
       </div>
       <Timeline
         className={styles.timeline}
@@ -403,10 +434,10 @@ Props) {
               );
 
             default:
-              return "";
+              return <></>;
           }
         })()}
-        hidden={activeTool == null}
+        hidden={interactionMode === "direct" || activeTool == null}
       />
     </div>
   );
@@ -507,6 +538,7 @@ function useExportAsFileCallback({
 type CursorState = {
   position: M.ReadonlyPixelVec2;
   activeTool: M.Tool | null;
+  isApplyingTool: boolean;
 };
 
 type OnCursorChangedCallback = (
@@ -520,12 +552,14 @@ function useCursor({
   cursorClientPosition,
   setCursorClientPosition,
   activeTool,
+  isApplyingTool,
 }: {
   onCursorChanged: OnCursorChangedCallback;
   transform: ReadonlyMat2d;
   cursorClientPosition: ReadonlyVec2;
   setCursorClientPosition: React.Dispatch<React.SetStateAction<ReadonlyVec2>>;
   activeTool: M.Tool | null;
+  isApplyingTool: boolean;
 }): {
   moveCursorClientPosition: (delta: ReadonlyVec2) => void;
   cursorPixelPosition: M.ReadonlyPixelVec2;
@@ -542,19 +576,21 @@ function useCursor({
   ];
 
   useOnChange(
-    ([prevCursorPixelPosition, prevTool]) => {
+    ([prevCursorPixelPosition, prevTool, prevIsApplyingTool]) => {
       onCursorChanged(
         {
           position: cursorPixelPosition,
           activeTool,
+          isApplyingTool,
         },
         {
           position: prevCursorPixelPosition,
           activeTool: prevTool,
+          isApplyingTool: prevIsApplyingTool,
         }
       );
     },
-    [cursorPixelPosition, activeTool, onCursorChanged],
+    [cursorPixelPosition, activeTool, isApplyingTool, onCursorChanged],
     ([prevPos, ...prevDeps], [nextPos, ...nextDeps]) =>
       arrayEquals(prevPos, nextPos) && arrayEquals(prevDeps, nextDeps)
   );
@@ -590,10 +626,14 @@ function useOnCursorChangedCallback({
   return [
     React.useCallback(
       (
-        { position, activeTool },
-        { position: prevPosition, activeTool: prevTool }
+        { position, activeTool, isApplyingTool },
+        {
+          position: prevPosition,
+          activeTool: prevTool,
+          isApplyingTool: prevIsApplyingTool,
+        }
       ) => {
-        if (activeTool == null) {
+        if (!isApplyingTool || activeTool == null) {
           return;
         }
 
@@ -607,6 +647,7 @@ function useOnCursorChangedCallback({
           number
         ];
         if (
+          isApplyingTool === prevIsApplyingTool &&
           activeTool === prevTool &&
           arrayEquals(cursorPixelPosition, prevCursorPixelPosition)
         ) {
@@ -614,7 +655,7 @@ function useOnCursorChangedCallback({
           return;
         }
 
-        if (activeTool != null && activeTool !== prevTool) {
+        if (isApplyingTool && !prevIsApplyingTool) {
           willPerformUndoableEdit();
         }
 
@@ -654,6 +695,7 @@ function useOnCursorChangedCallback({
         translateSprite,
         erasePixels,
         fillAreaStartingAt,
+        willPerformUndoableEdit,
       ]
     ),
   ];
@@ -670,7 +712,6 @@ function useHotkeyButtonPresses({
     (event: KeyboardEvent) => {
       for (const [matchKey, tool] of TOOL_KEYMAPS) {
         if (event.key === matchKey && activeTool !== tool) {
-          console.log("setting active tool", tool);
           setActiveTool(tool);
         }
       }
@@ -703,6 +744,7 @@ function useEditorPanGesture({
   interactionMode,
   setClientArtboardTransform,
   forceTransform,
+  directModeSetIsApplyingTool,
 }: {
   setCursorClientPosition: (nextPosition: ReadonlyVec2) => void;
   moveCursorClientPosition: (delta: ReadonlyVec2) => void;
@@ -711,6 +753,7 @@ function useEditorPanGesture({
     React.SetStateAction<ReadonlyMat2d>
   >;
   forceTransform: boolean;
+  directModeSetIsApplyingTool: (shouldApply: boolean) => void;
 }): {
   bindHandlers: () => any;
   artboardContainerRef: React.Ref<HTMLDivElement>;
@@ -731,8 +774,7 @@ function useEditorPanGesture({
           prevPositionRef.current = null;
           prevTransformPointersRef.current = {};
           if (interactionMode === "direct") {
-            // TODO
-            // setButtonPressed(1, false);
+            directModeSetIsApplyingTool(false);
           }
           return;
         }
@@ -750,8 +792,7 @@ function useEditorPanGesture({
           bcrRef.current = pointerState.currentTarget.getBoundingClientRect();
           if (interactionMode === "direct") {
             setCursorClientPosition(pointerState.position);
-            // TODO
-            // setButtonPressed(1, true);
+            directModeSetIsApplyingTool(true);
           } else {
             const delta =
               prevPositionRef.current == null
@@ -808,6 +849,7 @@ function useEditorPanGesture({
         moveCursorClientPosition,
         setClientArtboardTransform,
         setCursorClientPosition,
+        directModeSetIsApplyingTool,
       ]
     );
 

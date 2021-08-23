@@ -18,6 +18,7 @@ interface Props {
   toolSet: [M.Tool, M.Tool, M.Tool, M.Tool];
 
   onButtonChanged: (isDown: boolean, tool: M.Tool) => void;
+  selectedTool: M.Tool | null;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -25,6 +26,7 @@ interface Props {
 export default function CursorModeButtons({
   toolSet,
   onButtonChanged,
+  selectedTool,
   className,
   style,
 }: Props) {
@@ -37,7 +39,11 @@ export default function CursorModeButtons({
       {toolSet.map((tool) => (
         <div
           key={tool}
-          className={classNames(styles.button, styles.secondaryButton)}
+          className={classNames(
+            styles.button,
+            styles.secondaryButton,
+            tool === selectedTool && styles.highlighted
+          )}
           data-pressed={buttonStates[tool] ?? false}
           onPointerDown={(event) => {
             event.currentTarget.setPointerCapture(event.pointerId);

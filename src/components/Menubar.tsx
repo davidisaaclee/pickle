@@ -36,7 +36,6 @@ export default function Menubar({ onTapButton, className, style }: Props) {
         Paste frame
       </button>
       <button
-        disabled
         className={styles.button}
         onClick={() => onTapButton("toggle-cursor")}
       >

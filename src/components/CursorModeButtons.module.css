@@ -5,6 +5,8 @@
 }
 
 .button {
+  position: relative;
+
   text-align: center;
   box-shadow: 8px 8px 1px hsla(0, 0%, 0%, 50%);
   outline: 2px solid black;
@@ -35,4 +37,23 @@
 
 .container > *:nth-child(3) {
   writing-mode: vertical-lr;
+}
+
+.button.highlighted {
+  background-color: blue;
+  color: white;
+  animation: highlighted-outline 2s forwards;
+  animation-iteration-count: infinite;
+}
+
+@keyframes highlighted-outline {
+  0% {
+    outline-color: hsla(0, 0%, 100%, 50%);
+  }
+  50% {
+    outline-color: black;
+  }
+  100% {
+    outline-color: hsla(0, 0%, 100%, 50%);
+  }
 }
