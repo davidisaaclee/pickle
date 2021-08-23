@@ -6,6 +6,7 @@ import Artboard from "../components/Artboard";
 import Menubar from "../components/Menubar";
 import Palette from "../components/Palette";
 import Timeline from "../components/Timeline";
+import Toast from "../components/Toast";
 import CursorModeButtons from "../components/CursorModeButtons";
 import * as M from "../model";
 import styles from "./Editor.module.css";
@@ -356,6 +357,56 @@ Props) {
             addBlankAnimationFrame();
           }
         }}
+      />
+      <Toast
+        message={(() => {
+          switch (activeTool) {
+            case null:
+              return <>No tool selected</>;
+
+            case "pen":
+              return (
+                <>
+                  <b>Pen tool:</b> Drag on sprite to replace pixels with a
+                  color.
+                </>
+              );
+
+            case "bucket":
+              return (
+                <>
+                  <b>Fill tool:</b> Drag on sprite to fill an area with a color.
+                </>
+              );
+
+            case "eraser":
+              return (
+                <>
+                  <b>Eraser:</b> Drag on sprite to erase existing pixels.
+                </>
+              );
+
+            case "grab":
+              return (
+                <>
+                  <b>Move tool:</b> Drag on sprite to translate the entire
+                  sprite.
+                </>
+              );
+
+            case "pickColor":
+              return (
+                <>
+                  <b>Sample tool:</b> Drag on sprite to pick a color from an
+                  existing pixel.
+                </>
+              );
+
+            default:
+              return "";
+          }
+        })()}
+        hidden={activeTool == null}
       />
     </div>
   );
