@@ -29,7 +29,11 @@
   box-shadow: 8px 8px 1px hsla(0, 0%, 0%, 50%);
 }
 
-.button:active {
+.button:disabled {
+  color: darkgray;
+}
+
+.button:enabled:active {
   box-shadow: 0px 0px 0px hsla(0, 0%, 0%, 30%);
   background-color: black;
   color: white;
