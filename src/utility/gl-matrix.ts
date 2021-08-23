@@ -9,7 +9,6 @@ import {
   ReadonlyMat2d,
 } from "gl-matrix";
 import * as nudged from "nudged";
-console.log(nudged);
 
 export * from "gl-matrix";
 
