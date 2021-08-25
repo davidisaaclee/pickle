@@ -110,7 +110,7 @@ export default function Editor({
       switch (interactionMode) {
         case "cursor":
           _setActiveTool(tool);
-          setIsApplyingTool(true);
+          setIsApplyingTool(tool != null);
           break;
 
         case "direct":
